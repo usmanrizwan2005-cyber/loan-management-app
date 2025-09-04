@@ -1,0 +1,17 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /loans/{loanId} {
+      // A user can READ a loan document if they are logged in and they are the owner.
+      // This rule will now allow your app to display the list.
+      allow read: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+
+      // A user can CREATE a new loan document if they are logged in and are the owner.
+      allow create: if request.auth != null && request.resource.data.ownerUid == request.auth.uid;
+
+      // A user can UPDATE or DELETE a loan document if they are the owner.
+      allow update, delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+    }
+  }
+}
