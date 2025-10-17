@@ -6,11 +6,6 @@ import { formatDate, formatCurrency, calculateLoanPaymentState } from '../utils/
 import {
   FaEdit,
   FaTrashAlt,
-  FaCalendarAlt,
-  FaCalendarCheck,
-  FaReceipt,
-  FaPhoneAlt,
-  FaClock,
 } from 'react-icons/fa';
 
 export default function LoanItem({
@@ -19,7 +14,6 @@ export default function LoanItem({
   onExtendClick,
   onEditClick,
   onMarkPaidClick,
-  onQuickPartial,
 }) {
   if (!loan) return null;
 
@@ -71,153 +65,73 @@ export default function LoanItem({
     return loan.status.replace('-', ' ');
   })();
 
-  const progressPercent = Math.min(
-    100,
-    Math.round(((totalPaid || 0) / (loan.amount || 1)) * 100)
-  );
-
   return (
-    <li
-      className={`surface overflow-hidden transition-transform duration-300 hover:-translate-y-1 ${
-        isOverdueLate ? 'border-[var(--color-error)]/40 shadow-[0_25px_40px_rgba(220,38,38,0.12)]' : ''
-      }`}
-    >
-      <div className="space-y-6 p-5 sm:p-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div className="flex items-center gap-4 sm:items-start">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] text-lg font-semibold text-white shadow-lg">
-              {loan.borrowerName?.[0]?.toUpperCase() || '?'}
-            </div>
-            <div className="space-y-1 text-center sm:text-left">
-              <h3 className="text-xl font-semibold text-[var(--color-heading)]">{loan.borrowerName}</h3>
-              <p className="text-sm text-[var(--color-muted)]">{loan.currency}</p>
-            </div>
+    <li className="loan-card">
+      {/* Header Section */}
+      <div className="loan-card-header">
+        <div className="borrower-info">
+          <div className="borrower-avatar">
+            {loan.borrowerName?.[0]?.toUpperCase() || '?'}
           </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-2 md:justify-end">
-            {!isEffectivelyPaid ? (
-              <span className={`chip ${isOverdueLate ? 'chip-error' : 'chip-subtle'}`}>{statusLabel}</span>
-            ) : (
-              <>
-                <span className="chip chip-success">Paid</span>
-                {onTimeVsLate && (
-                  <span className="chip chip-muted">{onTimeVsLate.replace('-', ' ')}</span>
-                )}
-              </>
-            )}
-            {isOverdueLate && <span className="chip chip-error uppercase">Overdue</span>}
+          <div className="borrower-details">
+            <h3 className="borrower-name">{loan.borrowerName}</h3>
+            <p className="loan-date">Taken {formatDate(loan.takenAt)}</p>
           </div>
         </div>
-
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl bg-[var(--color-surface-alt)]/70 p-4 shadow-inner text-center sm:text-left">
-            <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-muted)]">Original amount</p>
-            <p className="mt-2 text-lg font-semibold text-[var(--color-heading)]">
-              {formatCurrency(loan.amount, loan.currency)}
-            </p>
-          </div>
-          <div className="rounded-2xl bg-[var(--color-surface-alt)]/70 p-4 shadow-inner text-center sm:text-left">
-            <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-muted)]">Paid</p>
-            <p className="mt-2 text-lg font-semibold text-green-600 dark:text-green-400">
-              {formatCurrency(totalPaid, loan.currency)}
-            </p>
-          </div>
-          <div className="rounded-2xl bg-[var(--color-surface-alt)]/70 p-4 shadow-inner text-center sm:text-left">
-            <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-muted)]">Remaining</p>
-            <p className={`mt-2 text-lg font-semibold ${isOverdueLate ? 'text-red-600' : 'text-amber-600'}`}>
-              {formatCurrency(remaining, loan.currency)}
-            </p>
-          </div>
-        </div>
-
-        <div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-white/40">
-            <div
-              className={`h-full rounded-full ${isEffectivelyPaid ? 'bg-[var(--color-success)]' : 'bg-[var(--color-primary)]'}`}
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-          <div className="mt-2 flex items-center justify-between text-xs text-[var(--color-muted)]">
-            <span>Progress</span>
-            <span>{progressPercent}%</span>
-          </div>
-        </div>
-
-        <div className="grid gap-3 text-sm text-[var(--color-muted)] sm:grid-cols-2">
-          <div className="flex items-center justify-center gap-2 sm:justify-start">
-            <FaReceipt className="text-[var(--color-primary)]" />
-            <span>
-              <strong className="text-[var(--color-heading)]">Taken:</strong> {formatDate(loan.takenAt)}
-            </span>
-          </div>
-          <div className={`flex items-center justify-center gap-2 sm:justify-start ${isOverdueLate ? 'text-[var(--color-error)]' : ''}`}>
-            <FaCalendarAlt className={isOverdueLate ? 'text-[var(--color-error)]' : 'text-[var(--color-primary)]'} />
-            <span>
-              <strong className="text-[var(--color-heading)]">Due:</strong> {formatDate(loan.dueDate)}
-            </span>
-          </div>
-          {loan.phone && (
-            <div className="flex items-center justify-center gap-2 sm:justify-start">
-              <FaPhoneAlt className="text-[var(--color-primary)]" />
-              <span>{loan.phone}</span>
-            </div>
-          )}
-          {isEffectivelyPaid && effectivePaidAt && (
-            <div className="flex items-center justify-center gap-2 sm:justify-start">
-              <FaCalendarCheck className="text-green-500" />
-              <span>
-                <strong className="text-[var(--color-heading)]">Repaid:</strong> {formatDate(effectivePaidAt)}
-              </span>
-            </div>
-          )}
-          {!isEffectivelyPaid && inferredLate && (
-            <div className="flex items-center justify-center gap-2 sm:justify-start">
-              <FaClock className="text-[var(--color-error)]" />
-              <span>Past due date</span>
-            </div>
+        <div className="status-badge">
+          {isOverdueLate ? (
+            <span className="status-late">LATE</span>
+          ) : isEffectivelyPaid ? (
+            <span className="status-paid">Paid</span>
+          ) : (
+            <span className="status-pending">{statusLabel}</span>
           )}
         </div>
       </div>
 
-      <footer className="flex flex-col gap-3 border-t border-[var(--color-border)] bg-[var(--color-surface-alt)]/70 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-          <button onClick={() => onDetailsClick(loan)} className="btn btn-outline px-4 py-2 w-full sm:w-auto">
+      {/* Amount Section */}
+      <div className="loan-amount-section">
+        <span className="amount-label">Amount</span>
+        <span className="amount-value">{formatCurrency(loan.amount, loan.currency)}</span>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="loan-actions">
+        <div className="action-buttons-row">
+          <button onClick={() => onDetailsClick(loan)} className="btn-details">
             Details
           </button>
-          {!isEffectivelyPaid && remaining > 0 && (
-            <>
-              <button onClick={() => onExtendClick(loan)} className="btn btn-surface px-4 py-2 w-full sm:w-auto">
-                Extend due date
-              </button>
-              <button onClick={() => onQuickPartial(loan)} className="btn btn-accent px-4 py-2 w-full sm:w-auto">
-                Log partial payment
-              </button>
-              <button onClick={() => onMarkPaidClick(loan)} className="btn btn-success px-4 py-2 w-full sm:w-auto">
-                Mark as paid
-              </button>
-            </>
+          {!isEffectivelyPaid && (
+            <button onClick={() => onExtendClick(loan)} className="btn-extend">
+              Extend due date
+            </button>
           )}
         </div>
-        <div className="flex w-full items-center justify-end gap-2">
-          <button
-            onClick={() => onEditClick(loan)}
-            className="btn btn-ghost px-3 py-2 text-[var(--color-muted)] hover:text-[var(--color-primary)]"
-            title="Edit loan"
-          >
-            <FaEdit />
+        {!isEffectivelyPaid && remaining > 0 && (
+          <button onClick={() => onMarkPaidClick(loan)} className="btn-mark-paid">
+            Mark as paid
           </button>
-          <button
-            onClick={moveToTrash}
-            disabled={isProcessingTrash}
-            className={`btn btn-ghost px-3 py-2 ${
-              isProcessingTrash ? 'cursor-not-allowed text-[var(--color-muted)]' : 'text-red-500 hover:text-red-600'
-            }`}
-            title="Move to trash"
-          >
-            <FaTrashAlt />
-          </button>
-        </div>
-      </footer>
+        )}
+      </div>
+
+      {/* Bottom Action Icons */}
+      <div className="loan-bottom-actions">
+        <button
+          onClick={() => onEditClick(loan)}
+          className="action-icon edit-icon"
+          title="Edit loan"
+        >
+          <FaEdit />
+        </button>
+        <button
+          onClick={moveToTrash}
+          disabled={isProcessingTrash}
+          className="action-icon delete-icon"
+          title="Move to trash"
+        >
+          <FaTrashAlt />
+        </button>
+      </div>
     </li>
   );
 }

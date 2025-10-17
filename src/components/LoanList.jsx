@@ -65,11 +65,6 @@ export default function LoanList({ loans }) {
     setModalLoan(loan);
   };
 
-  const handleQuickPartial = (loan) => {
-    setInitialPaymentType('partial');
-    setModalView('markPaid');
-    setModalLoan(loan);
-  };
 
   return (
     <section className="card space-y-6">
@@ -113,7 +108,6 @@ export default function LoanList({ loans }) {
               onExtendClick={handleExtendClick}
               onEditClick={handleEditClick}
               onMarkPaidClick={handleMarkPaidClick}
-              onQuickPartial={handleQuickPartial}
             />
           ))}
         </ul>
