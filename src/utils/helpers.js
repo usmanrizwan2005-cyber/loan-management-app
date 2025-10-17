@@ -38,11 +38,13 @@ export const formatCurrency = (amount, currencyCode, locale) => {
     resolvedLocale = localStorage.getItem("currencyLocale") || undefined;
   }
   try {
-    return new Intl.NumberFormat(resolvedLocale || "en-US", {
+    const formatted = new Intl.NumberFormat(resolvedLocale || "en-US", {
       style: "currency",
       currency: code,
+      currencyDisplay: "code",
       maximumFractionDigits: 2,
     }).format(Number.isFinite(amount) ? amount : Number(amount || 0));
+    return formatted.replace(/\u00A0/g, " ");
   } catch (_) {
     return `${code} ${Number(amount || 0).toFixed(2)}`;
   }

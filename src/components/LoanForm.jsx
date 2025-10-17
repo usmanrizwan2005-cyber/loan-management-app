@@ -14,8 +14,7 @@ import { usePhoneCountries } from '../utils/usePhoneCountries';
 import CountrySelect from './CountrySelect.jsx';
 import CurrencySelect from './CurrencySelect.jsx';
 
-export default function LoanForm() {
-  const [isOpen, setIsOpen] = useState(true);
+export default function LoanForm({ onClose }) {
   const [borrowerName, setBorrowerName] = useState('');
   const [phone, setPhone] = useState('');
   const [amount, setAmount] = useState('');
@@ -106,165 +105,144 @@ export default function LoanForm() {
   };
 
   return (
-    <section id="add-loan" className="card space-y-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-2 text-center sm:text-left">
-          <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">Create entry</p>
-          <h2 className="text-2xl sm:text-3xl font-semibold text-[var(--color-heading)]">Add a new loan</h2>
-          <p className="text-sm text-[var(--color-muted)] max-w-2xl mx-auto sm:mx-0">
-            Capture who borrowed, how much they owe, and when repayment is expected. We will keep everything synced across devices.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setIsOpen((previous) => !previous)}
-          className="btn btn-accent text-sm px-5 py-2 w-full sm:w-auto"
-        >
-          {isOpen ? 'Hide form' : 'Add loan'}
-        </button>
-      </header>
+    <div className="loan-form-content">
+      <form onSubmit={handleSubmit}>
+        <div className="grid">
+          <label>
+            <span>Borrower's name</span>
+            <input
+              type="text"
+              id="borrowerName"
+              value={borrowerName}
+              onChange={(event) => setBorrowerName(event.target.value)}
+              placeholder="e.g. Sara Ahmed"
+              className="input"
+              required
+            />
+          </label>
 
-      {isOpen && (
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            <label className="md:col-span-2 flex flex-col gap-2 text-sm">
-              <span className="font-medium text-[var(--color-heading)]">Borrower's name</span>
-              <input
-                type="text"
-                id="borrowerName"
-                value={borrowerName}
-                onChange={(event) => setBorrowerName(event.target.value)}
-                placeholder="e.g. Sara Ahmed"
-                className="input"
-                required
+          <div className="space-y-2">
+            <span>Phone number <span className="text-[var(--color-muted)]">(optional)</span></span>
+            <div className="grid gap-3">
+              <CountrySelect
+                countries={countries?.length ? countries : seedCountries}
+                value={phoneCountry}
+                onChange={(country) => {
+                  setPhoneCountry(country);
+                  const uid = auth.currentUser?.uid;
+                  if (uid) {
+                    localStorage.setItem(`defaultPhoneCountry:${uid}`, country.code);
+                  } else {
+                    localStorage.setItem('defaultPhoneCountry', country.code);
+                  }
+                }}
+                filter={countryFilter}
+                onFilterChange={setCountryFilter}
               />
-            </label>
-
-            <div className="md:col-span-2 space-y-2">
-              <span className="block text-sm font-medium text-[var(--color-heading)]">Phone number <span className="text-[var(--color-muted)]">(optional)</span></span>
-              <div className="grid gap-3 md:grid-cols-[minmax(0,220px),1fr]">
-                <CountrySelect
-                  countries={countries?.length ? countries : seedCountries}
-                  value={phoneCountry}
-                  onChange={(country) => {
-                    setPhoneCountry(country);
+              <input
+                type="tel"
+                id="phone"
+                value={phone}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  const detected = findCountryByDialPrefix(value);
+                  if (detected && detected.code !== (phoneCountry?.code || '')) {
+                    setPhoneCountry(detected);
                     const uid = auth.currentUser?.uid;
                     if (uid) {
-                      localStorage.setItem(`defaultPhoneCountry:${uid}`, country.code);
+                      localStorage.setItem(`defaultPhoneCountry:${uid}`, detected.code);
                     } else {
-                      localStorage.setItem('defaultPhoneCountry', country.code);
+                      localStorage.setItem('defaultPhoneCountry', detected.code);
                     }
-                  }}
-                  filter={countryFilter}
-                  onFilterChange={setCountryFilter}
-                />
-                <input
-                  type="tel"
-                  id="phone"
-                  value={phone}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    const detected = findCountryByDialPrefix(value);
-                    if (detected && detected.code !== (phoneCountry?.code || '')) {
-                      setPhoneCountry(detected);
-                      const uid = auth.currentUser?.uid;
-                      if (uid) {
-                        localStorage.setItem(`defaultPhoneCountry:${uid}`, detected.code);
-                      } else {
-                        localStorage.setItem('defaultPhoneCountry', detected.code);
-                      }
-                    }
-                    const formatted = formatWithDialCode(detected || phoneCountry, value);
-                    setPhone(formatted);
-                    const result = validateInternationalPhone(detected || phoneCountry, formatted);
-                    setPhoneError(result.ok ? '' : result.reason || 'Invalid phone number');
-                  }}
-                  placeholder={`+${phoneCountry?.dialCode || ''} 3xxxxxxxxx`}
-                  className={`input ${phoneError ? '!border-[var(--color-error)] focus:!border-[var(--color-error)]' : ''}`}
-                />
-              </div>
-              {phoneError && <p className="text-sm text-[var(--color-error)]">{phoneError}</p>}
-            </div>
-
-            <label className="flex flex-col gap-2 text-sm">
-              <span className="font-medium text-[var(--color-heading)]">Amount</span>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <input
-                  type="number"
-                  id="amount"
-                  value={amount}
-                  inputMode="decimal"
-                  step="any"
-                  min={0}
-                  onKeyDown={(event) => {
-                    if (event.key === '-' || event.key === '+' || event.key === 'e' || event.key === 'E') {
-                      event.preventDefault();
-                    }
-                  }}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    if (value === '') {
-                      setAmount('');
-                      return;
-                    }
-                    const numeric = Number(value);
-                    if (!Number.isNaN(numeric)) {
-                      setAmount(String(Math.max(0, numeric)));
-                    }
-                  }}
-                  placeholder="1000"
-                  className="input"
-                  required
-                />
-              </div>
-            </label>
-
-            <div className="flex flex-col gap-2 text-sm">
-              <span className="font-medium text-[var(--color-heading)]">Currency</span>
-              <CurrencySelect
-                currencies={allCurrencies?.length ? allCurrencies : seedCurrencies}
-                valueCode={currency}
-                filter={currencyFilter}
-                onFilterChange={setCurrencyFilter}
-                onChange={(selected) => setCurrency(selected.code)}
+                  }
+                  const formatted = formatWithDialCode(detected || phoneCountry, value);
+                  setPhone(formatted);
+                  const result = validateInternationalPhone(detected || phoneCountry, formatted);
+                  setPhoneError(result.ok ? '' : result.reason || 'Invalid phone number');
+                }}
+                placeholder={`+${phoneCountry?.dialCode || ''} 3xxxxxxxxx`}
+                className={`input ${phoneError ? '!border-[var(--color-error)] focus:!border-[var(--color-error)]' : ''}`}
               />
             </div>
-
-            <label className="flex flex-col gap-2 text-sm">
-              <span className="font-medium text-[var(--color-heading)]">Taken on</span>
-              <input
-                type="date"
-                id="takenDate"
-                value={takenDate}
-                onChange={(event) => setTakenDate(event.target.value)}
-                className="input"
-                required
-              />
-            </label>
-
-            <label className="md:col-span-2 flex flex-col gap-2 text-sm">
-              <span className="font-medium text-[var(--color-heading)]">Due on</span>
-              <input
-                type="date"
-                id="dueDate"
-                value={dueDate}
-                onChange={(event) => setDueDate(event.target.value)}
-                className="input"
-                required
-              />
-            </label>
+            {phoneError && <p className="text-sm text-[var(--color-error)]">{phoneError}</p>}
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-[var(--color-muted)] text-center sm:text-left">
-              You can add extensions, partial payments, and adjustments after the loan is created.
-            </p>
-            <button type="submit" className="btn btn-primary w-full sm:w-auto px-6" disabled={isSubmitting}>
-              {isSubmitting ? 'Adding...' : 'Add loan'}
-            </button>
+          <label>
+            <span>Amount</span>
+            <input
+              type="number"
+              id="amount"
+              value={amount}
+              inputMode="decimal"
+              step="any"
+              min={0}
+              onKeyDown={(event) => {
+                if (event.key === '-' || event.key === '+' || event.key === 'e' || event.key === 'E') {
+                  event.preventDefault();
+                }
+              }}
+              onChange={(event) => {
+                const value = event.target.value;
+                if (value === '') {
+                  setAmount('');
+                  return;
+                }
+                const numeric = Number(value);
+                if (!Number.isNaN(numeric)) {
+                  setAmount(String(Math.max(0, numeric)));
+                }
+              }}
+              placeholder="1000"
+              className="input"
+              required
+            />
+          </label>
+
+          <div>
+            <span>Currency</span>
+            <CurrencySelect
+              currencies={allCurrencies?.length ? allCurrencies : seedCurrencies}
+              valueCode={currency}
+              filter={currencyFilter}
+              onFilterChange={setCurrencyFilter}
+              onChange={(selected) => setCurrency(selected.code)}
+            />
           </div>
-        </form>
-      )}
-    </section>
+
+          <label>
+            <span>Taken on</span>
+            <input
+              type="date"
+              id="takenDate"
+              value={takenDate}
+              onChange={(event) => setTakenDate(event.target.value)}
+              className="input"
+              required
+            />
+          </label>
+
+          <label>
+            <span>Due on</span>
+            <input
+              type="date"
+              id="dueDate"
+              value={dueDate}
+              onChange={(event) => setDueDate(event.target.value)}
+              className="input"
+              required
+            />
+          </label>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-[var(--color-muted)]">
+            You can add extensions, partial payments, and adjustments after the loan is created.
+          </p>
+          <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+            {isSubmitting ? 'Adding...' : 'Add loan'}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
