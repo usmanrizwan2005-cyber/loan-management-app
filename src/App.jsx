@@ -7,12 +7,14 @@ import {
   FaSignOutAlt,
   FaCog,
   FaChartPie,
-  FaCheckCircle,
   FaClock,
   FaPlus,
+  FaTrashAlt,
+  FaCalendarAlt,
+  FaExclamationTriangle,
 } from 'react-icons/fa';
 import { auth, db } from './firebase';
-import { toJSDate, formatCurrency } from './utils/helpers';
+import { toJSDate, formatCurrency, formatDate } from './utils/helpers';
 import { currencies } from './utils/currencies';
 import Login from './components/Login.jsx';
 import LoanForm from './components/LoanForm';
@@ -190,7 +192,7 @@ function SettingsScreen({
   return (
     <div className="screen settings-screen">
       <header className="settings-header">
-        <button type="button" className="btn btn-muted" onClick={onBack}>
+        <button type="button" className="button button--ghost" onClick={onBack}>
           Back
         </button>
         <h1 className="settings-title">Preferences</h1>
@@ -207,7 +209,7 @@ function SettingsScreen({
           <div className="settings-card__content">
             <div className="settings-switch">
               <span>Dark mode</span>
-              <button type="button" className="btn btn-outline" onClick={onToggleDark}>
+              <button type="button" className="button button--surface" onClick={onToggleDark}>
                 {dark ? 'Turn off' : 'Turn on'}
               </button>
             </div>
@@ -230,52 +232,6 @@ function SettingsScreen({
           </div>
         </div>
 
-        <div className="settings-card">
-          <header className="settings-card__header">
-            <span className="settings-card__eyebrow">Defaults</span>
-            <h2>Loan preferences</h2>
-            <p>Set values we’ll reuse every time you create or review loans.</p>
-          </header>
-
-          <div className="settings-card__content settings-card__grid">
-            <label className="settings-field">
-              <span>Items per page</span>
-              <input
-                type="number"
-                min={5}
-                max={100}
-                value={itemsPerPage}
-                onChange={(event) => onItemsPerPageChange(Number(event.target.value) || 10)}
-                className="input"
-              />
-            </label>
-
-            <label className="settings-field">
-              <span>Preferred currency</span>
-              <select value={defaultCurrency} onChange={(event) => onCurrencyChange(event.target.value)} className="input">
-                {currencyOptions
-                  .map((code) => currencies.find((currency) => currency.code === code))
-                  .filter(Boolean)
-                  .map((currency) => (
-                    <option key={currency.code} value={currency.code}>
-                      {currency.code} - {currency.name}
-                    </option>
-                  ))}
-              </select>
-            </label>
-
-            <label className="settings-field">
-              <span>Number format</span>
-              <select value={currencyLocale} onChange={(event) => onLocaleChange(event.target.value)} className="input">
-                {LOCALE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        </div>
       </section>
     </div>
   );
@@ -412,6 +368,65 @@ function App() {
     );
   }, [loans]);
 
+  const { lateCount, dueSoonCount } = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const upcomingThreshold = new Date(today);
+    upcomingThreshold.setDate(upcomingThreshold.getDate() + 7);
+
+    return loans.reduce(
+      (accumulator, loan) => {
+        const dueDate = toJSDate(loan.dueDate);
+        const isSettled = loan.repaidAt || loan.status === 'paid';
+        if (!dueDate || isSettled) {
+          return accumulator;
+        }
+
+        if (dueDate < today || loan.status === 'late') {
+          accumulator.lateCount += 1;
+        } else if (dueDate <= upcomingThreshold) {
+          accumulator.dueSoonCount += 1;
+        }
+
+        return accumulator;
+      },
+      { lateCount: 0, dueSoonCount: 0 }
+    );
+  }, [loans]);
+
+  const repaymentProgress = totals.total
+    ? Math.min(100, Math.round((totals.paid / totals.total) * 100))
+    : 0;
+  const activeLoansCount = loans.length;
+  const averageLoanAmount = useMemo(() => {
+    if (!loans.length) return 0;
+    return totals.total / loans.length;
+  }, [loans, totals.total]);
+  const nextDueLoan = useMemo(() => {
+    return (
+      loans
+        .map((loan) => {
+          const due = toJSDate(loan.dueDate);
+          const isSettled = loan.repaidAt || loan.status === 'paid';
+          if (!due || isSettled) return null;
+          return { loan, due };
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.due.getTime() - b.due.getTime())[0] || null
+    );
+  }, [loans]);
+  const latestLoan = loans.length ? loans[0] : null;
+  const userFirstName = useMemo(() => {
+    if (!user) return '';
+    if (user.displayName) {
+      return user.displayName.split(' ')[0];
+    }
+    if (user.email) {
+      return user.email.split('@')[0];
+    }
+    return '';
+  }, [user]);
+
   const handleLogout = () => {
     auth.signOut();
     setScreen(SCREEN_WELCOME);
@@ -435,26 +450,36 @@ function App() {
       <>
         <Toaster position="top-center" />
         <div className="screen welcome-screen">
-          <article className="welcome-card">
-            <p className="welcome-eyebrow">Stay on top of every promise</p>
-            <h1>Loan Manager</h1>
-            <p className="welcome-lede">
-              A calm, responsive workspace for tracking balances, celebrating repayments, and keeping lending relationships
-              transparent.
-            </p>
-            <ul className="welcome-highlights">
-              <li>Real-time sync via Firebase</li>
-              <li>Multi-currency tracking</li>
-            </ul>
-            <button type="button" className="welcome-continue" onClick={() => setScreen(SCREEN_DASHBOARD)}>
-              Continue
-              <FaArrowRight aria-hidden />
-            </button>
-            <p className="welcome-user-info">Signed in as {user.email}</p>
-          </article>
-          <button type="button" className="welcome-signout" onClick={handleLogout}>
-            Sign out
-          </button>
+          <div className="welcome-shell">
+
+            <article className="welcome-card">
+              <header className="welcome-card__header">
+                <span className="welcome-eyebrow">Loan Manager</span>
+                <h2>Pick up where you left off</h2>
+                <p className="welcome-lede">
+                  Review loan history, capture new entries, and follow up on repayments without skipping a beat.
+                </p>
+              </header>
+
+              <ul className="welcome-highlights">
+                <li>Real-time sync via Firebase</li>
+                <li>Multi-currency support</li>
+                <li>Touch-first controls for mobile</li>
+              </ul>
+
+              <div className="welcome-card__actions">
+                <button type="button" className="button button--primary button--stretch" onClick={() => setScreen(SCREEN_DASHBOARD)}>
+                  Continue
+                  <FaArrowRight aria-hidden />
+                </button>
+                <button type="button" className="button button--ghost button--stretch" onClick={handleLogout}>
+                  Sign out
+                </button>
+              </div>
+
+              <p className="welcome-user-info">Signed in as {user.email}</p>
+            </article>
+          </div>
         </div>
       </>
     );
@@ -485,82 +510,247 @@ function App() {
     <>
       <Toaster position="top-center" />
       <div className="screen dashboard-screen">
-        {/* Loan Summary Card */}
-        <section className="loan-summary-card">
-          <span className="card-eyebrow">Loan Amount</span>
-          <div className="loan-amount">
-            {formatCurrency(totals.total, defaultCurrency, currencyLocale)}
+        <header className="dashboard-header">
+          <div className="dashboard-header__intro">
+            <span className="dashboard-header__badge">Loan Manager</span>
+            <h1>
+              {userFirstName ? `Welcome back, ${userFirstName}` : 'Portfolio overview'}
+            </h1>
+            <p>
+              {activeLoansCount
+                ? 'Monitor repayments and upcoming obligations in one place.'
+                : 'Add your first loan to start tracking repayments and reminders.'}
+            </p>
           </div>
-          <div className="loan-breakdown">
-            <div className="breakdown-item">
-              <span className="breakdown-label">Total Repaid</span>
-              <span className="breakdown-value repaid">{formatCurrency(totals.paid, defaultCurrency, currencyLocale)}</span>
-            </div>
-            <div className="breakdown-item">
-              <span className="breakdown-label">Balance Remaining</span>
-              <span className="breakdown-value remaining">{formatCurrency(totals.remaining, defaultCurrency, currencyLocale)}</span>
-            </div>
+          <div className="dashboard-header__actions">
+            <button
+              type="button"
+              className="button button--primary"
+              onClick={() => setShowLoanForm(true)}
+            >
+              <FaPlus aria-hidden />
+              <span>New loan</span>
+            </button>
+            <button
+              type="button"
+              className="button button--ghost"
+              onClick={handleLogout}
+            >
+              <FaSignOutAlt aria-hidden />
+              <span>Sign out</span>
+            </button>
           </div>
+        </header>
+
+        <section className="dashboard-summary" aria-label="Portfolio summary">
+          <article className="summary-card">
+            <span className="summary-card__label">Outstanding balance</span>
+            <strong className="summary-card__value">
+              {formatCurrency(totals.remaining, defaultCurrency, currencyLocale)}
+            </strong>
+            <p className="summary-card__meta">
+              {totals.total
+                ? `${Math.max(0, 100 - repaymentProgress)}% of principal still open`
+                : 'Awaiting your first loan'}
+            </p>
+          </article>
+          <article className="summary-card">
+            <span className="summary-card__label">Cash repaid</span>
+            <strong className="summary-card__value">
+              {formatCurrency(totals.paid, defaultCurrency, currencyLocale)}
+            </strong>
+            <p className="summary-card__meta">
+              {totals.paid
+                ? `Across ${activeLoansCount} active ${activeLoansCount === 1 ? 'loan' : 'loans'}`
+                : 'No repayments captured yet'}
+            </p>
+          </article>
+          <article className="summary-card">
+            <span className="summary-card__label">Active loans</span>
+            <strong className="summary-card__value">{activeLoansCount}</strong>
+            <p className="summary-card__meta">
+              {activeLoansCount
+                ? `Avg ticket ${formatCurrency(averageLoanAmount, defaultCurrency, currencyLocale)}${latestLoan ? ` | Last added ${formatDate(latestLoan.createdAt)}` : ''}`
+                : 'Create a new loan to get started'}
+            </p>
+          </article>
         </section>
 
-        {/* Create Entry Card */}
-        <section className="create-entry-card">
-          <span className="card-eyebrow">Create Entry</span>
-          <h2>Add a new loan</h2>
-          <p>
-            Capture who borrowed, how much they owe, and when repayment is expected. We will keep everything synced across devices.
-          </p>
+        <main className="dashboard-content">
+          <section className="panel insight-panel">
+            <div className="panel__header">
+              <div className="panel__icon">
+                <FaChartPie aria-hidden />
+              </div>
+              <div>
+                <span className="panel__eyebrow">Performance</span>
+                <h2>Repayment progress</h2>
+                <p>
+                  <strong>{repaymentProgress}%</strong> of portfolio repaid
+                </p>
+              </div>
+            </div>
+
+            <div className="insight-panel__progress">
+              <div className="progress-track">
+                <div className="progress-bar" style={{ width: `${repaymentProgress}%` }} />
+              </div>
+              <div className="progress-meta">
+                <span>{formatCurrency(totals.paid, defaultCurrency, currencyLocale)} repaid</span>
+                <span>{formatCurrency(totals.remaining, defaultCurrency, currencyLocale)} outstanding</span>
+              </div>
+            </div>
+
+            <div className="insight-panel__metrics">
+              <article className="metric-card metric-card--warning">
+                <div className="metric-card__icon">
+                  <FaExclamationTriangle aria-hidden />
+                </div>
+                <div>
+                  <span className="metric-card__label">Late loans</span>
+                  <strong className="metric-card__value">{lateCount}</strong>
+                  <p>{lateCount ? 'Needs attention today' : 'All accounts on time'}</p>
+                </div>
+              </article>
+              <article className="metric-card metric-card--info">
+                <div className="metric-card__icon">
+                  <FaClock aria-hidden />
+                </div>
+                <div>
+                  <span className="metric-card__label">Due this week</span>
+                  <strong className="metric-card__value">{dueSoonCount}</strong>
+                  <p>{dueSoonCount ? 'Schedule follow-ups' : 'No upcoming deadlines'}</p>
+                </div>
+              </article>
+              <article className="metric-card metric-card--neutral">
+                <div className="metric-card__icon">
+                  <FaCalendarAlt aria-hidden />
+                </div>
+                <div>
+                  <span className="metric-card__label">Next due date</span>
+                  <strong className="metric-card__value">
+                    {nextDueLoan ? formatDate(nextDueLoan.due) : 'All caught up'}
+                  </strong>
+                  <p>
+                    {nextDueLoan
+                      ? `${nextDueLoan.loan.borrowerName || 'Borrower'} - ${formatCurrency(
+                          nextDueLoan.loan.amount,
+                          nextDueLoan.loan.currency || defaultCurrency,
+                          currencyLocale
+                        )}`
+                      : 'No open balances pending'}
+                  </p>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section className="panel create-panel">
+            <div className="panel__header">
+              <div className="panel__icon panel__icon--accent">
+                <FaPlus aria-hidden />
+              </div>
+              <div>
+                <span className="panel__eyebrow">Add record</span>
+                <h2>Create a new loan</h2>
+                <p>Capture borrower details, amounts, and upcoming repayments in a few taps.</p>
+              </div>
+            </div>
+
+            <div className="panel__actions">
+              <button
+                type="button"
+                className={`button ${showLoanForm ? 'button--ghost' : 'button--surface'} button--pill`}
+                onClick={() => setShowLoanForm((previous) => !previous)}
+              >
+                {showLoanForm ? 'Close builder' : 'Open loan form'}
+              </button>
+            </div>
+
+            {showLoanForm ? (
+              <div className="create-panel__form">
+                <LoanForm onClose={() => setShowLoanForm(false)} />
+              </div>
+            ) : (
+              <ul className="panel__tips">
+                <li>Store phone numbers with automatic country code detection.</li>
+                <li>Track partial repayments and adjustments over time.</li>
+                <li>Your workspace stays in sync instantly through Firebase.</li>
+              </ul>
+            )}
+          </section>
+
+          <section className="panel views-panel">
+            <div className="views-panel__header">
+              <div>
+                <span className="panel__eyebrow">Workspace</span>
+                <h2>{viewMode === 'loans' ? 'Active portfolio' : 'Trash bin'}</h2>
+                <p>Switch between live records and archived items.</p>
+              </div>
+              <div className="views-panel__tabs" role="tablist" aria-label="Loan views">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewMode === 'loans'}
+                  className={`tab-chip${viewMode === 'loans' ? ' tab-chip--active' : ''}`}
+                  onClick={() => setViewMode('loans')}
+                >
+                  Portfolio
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewMode === 'trash'}
+                  className={`tab-chip${viewMode === 'trash' ? ' tab-chip--active' : ''}`}
+                  onClick={() => setViewMode('trash')}
+                >
+                  Trash
+                </button>
+              </div>
+            </div>
+          </section>
+
+          {viewMode === 'loans' ? (
+            <LoanList loans={loans} />
+          ) : (
+            <Trash />
+          )}
+        </main>
+
+        <nav className="mobile-dock" aria-label="Primary navigation">
           <button
             type="button"
-            className="add-loan-button"
-            onClick={() => setShowLoanForm(!showLoanForm)}
-          >
-            {showLoanForm ? 'Hide Form' : 'Add loan'}
-          </button>
-          
-          {/* Loan Form - appears inside the same card */}
-          {showLoanForm && <LoanForm onClose={() => setShowLoanForm(false)} />}
-        </section>
-
-        {/* Your Loans Card */}
-        <section className="loans-navigation-card">
-          <h2>Your loans</h2>
-          <p>
-            Filter by status, search by name or number, and open any record for deeper detail.
-          </p>
-        </section>
-
-        {viewMode === 'loans' ? (
-          <LoanList loans={loans} itemsPerPage={itemsPerPage} />
-        ) : (
-          <Trash />
-        )}
-
-        {/* Fixed Floating Navigation Bar */}
-        <div className="floating-nav-bar">
-          <button
-            type="button"
-            className={`nav-item nav-item--portfolio${viewMode === 'loans' ? ' nav-item--active' : ''}`}
+            className={`mobile-dock__item${viewMode === 'loans' ? ' mobile-dock__item--active' : ''}`}
             onClick={() => setViewMode('loans')}
           >
-            Portfolio
+            <FaChartPie aria-hidden />
+            <span>Portfolio</span>
           </button>
           <button
             type="button"
-            className="nav-item nav-item--trash"
+            className={`mobile-dock__item${showLoanForm ? ' mobile-dock__item--active' : ''}`}
+            onClick={() => setShowLoanForm((previous) => !previous)}
+          >
+            <FaPlus aria-hidden />
+            <span>{showLoanForm ? 'Close form' : 'New loan'}</span>
+          </button>
+          <button
+            type="button"
+            className={`mobile-dock__item${viewMode === 'trash' ? ' mobile-dock__item--active' : ''}`}
             onClick={() => setViewMode('trash')}
           >
-            Trash
+            <FaTrashAlt aria-hidden />
+            <span>Trash</span>
           </button>
           <button
             type="button"
-            className="nav-item nav-item--settings"
+            className="mobile-dock__item"
             onClick={() => setScreen(SCREEN_SETTINGS)}
           >
             <FaCog aria-hidden />
-            Settings
+            <span>Settings</span>
           </button>
-        </div>
+        </nav>
       </div>
     </>
   );

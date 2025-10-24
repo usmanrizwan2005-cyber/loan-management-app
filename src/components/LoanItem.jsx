@@ -65,73 +65,130 @@ export default function LoanItem({
     return loan.status.replace('-', ' ');
   })();
 
+  const amountValue = Number(loan.amount || 0);
+  const amountLabel = formatCurrency(loan.amount, loan.currency);
+  const remainingLabel = formatCurrency(remaining, loan.currency);
+  const paidLabel = formatCurrency(totalPaid, loan.currency);
+  const repaymentPercent = amountValue > 0 ? Math.min(100, Math.round((totalPaid / amountValue) * 100)) : 0;
+  const daysUntilDue = Math.ceil((dueDateOnly - today) / (1000 * 60 * 60 * 24));
+  const dueDateLabel = formatDate(loan.dueDate);
+
+  let timelineDescriptor;
+  if (isEffectivelyPaid) {
+    timelineDescriptor = effectivePaidAt ? `Settled on ${formatDate(effectivePaidAt)}` : 'Marked as paid';
+  } else if (isOverdueLate) {
+    const daysOverdue = Math.abs(Math.min(daysUntilDue, 0));
+    timelineDescriptor = daysOverdue ? `${daysOverdue} day${daysOverdue === 1 ? '' : 's'} overdue` : 'Overdue';
+  } else if (daysUntilDue === 0) {
+    timelineDescriptor = 'Due today';
+  } else if (daysUntilDue === 1) {
+    timelineDescriptor = 'Due tomorrow';
+  } else {
+    timelineDescriptor = `Due in ${daysUntilDue} days`;
+  }
+
   return (
     <li className="loan-card">
-      {/* Header Section */}
-      <div className="loan-card-header">
-        <div className="borrower-info">
-          <div className="borrower-avatar">
-            {loan.borrowerName?.[0]?.toUpperCase() || '?'}
-          </div>
-          <div className="borrower-details">
-            <h3 className="borrower-name">{loan.borrowerName}</h3>
-            <p className="loan-date">Taken {formatDate(loan.takenAt)}</p>
+      <header className="loan-card__header">
+        <div className="loan-card__identity">
+          <div className="loan-card__avatar">{loan.borrowerName?.[0]?.toUpperCase() || '?'}</div>
+          <div>
+            <h3 className="loan-card__name">{loan.borrowerName}</h3>
+            <p className="loan-card__subtitle">Taken {formatDate(loan.takenAt)}</p>
           </div>
         </div>
-        <div className="status-badge">
-          {isOverdueLate ? (
-            <span className="status-late">LATE</span>
-          ) : isEffectivelyPaid ? (
-            <span className="status-paid">Paid</span>
-          ) : (
-            <span className="status-pending">{statusLabel}</span>
-          )}
+        <span
+          className={`loan-card__badge ${
+            isOverdueLate
+              ? 'loan-card__badge--late'
+              : isEffectivelyPaid
+              ? 'loan-card__badge--paid'
+              : 'loan-card__badge--pending'
+          }`}
+        >
+          {isOverdueLate ? 'Late' : statusLabel}
+        </span>
+      </header>
+
+      <div className="loan-card__body">
+        <div className="loan-card__amount">
+          <span>Amount</span>
+          <strong>{amountLabel}</strong>
+        </div>
+
+        <div className="loan-card__stats">
+          <div>
+            <span>Paid</span>
+            <strong>{paidLabel}</strong>
+          </div>
+          <div>
+            <span>Remaining</span>
+            <strong>{remainingLabel}</strong>
+          </div>
+        </div>
+
+        <div className="loan-card__timeline">
+          <span className="loan-card__timeline-label">{timelineDescriptor}</span>
+          <span className="loan-card__timeline-date">Due {dueDateLabel}</span>
+        </div>
+
+        <div className="loan-card__progress">
+          <div className="progress-track">
+            <div
+              className={`progress-bar${isEffectivelyPaid ? ' progress-bar--success' : ''}`}
+              style={{ width: `${repaymentPercent}%` }}
+            />
+          </div>
+          <div className="loan-card__progress-meta">
+            <span>{repaymentPercent}% repaid</span>
+            <span>{remainingLabel} remaining</span>
+          </div>
         </div>
       </div>
 
-      {/* Amount Section */}
-      <div className="loan-amount-section">
-        <span className="amount-label">Amount</span>
-        <span className="amount-value">{formatCurrency(loan.amount, loan.currency)}</span>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="loan-actions">
-        <div className="action-buttons-row">
-          <button onClick={() => onDetailsClick(loan)} className="btn-details">
+      <div className="loan-card__actions">
+        <div className="loan-card__actions-row">
+          <button type="button" className="button button--surface" onClick={() => onDetailsClick(loan)}>
             Details
           </button>
           {!isEffectivelyPaid && (
-            <button onClick={() => onExtendClick(loan)} className="btn-extend">
+            <button type="button" className="button button--surface" onClick={() => onExtendClick(loan)}>
               Extend due date
             </button>
           )}
         </div>
         {!isEffectivelyPaid && remaining > 0 && (
-          <button onClick={() => onMarkPaidClick(loan)} className="btn-mark-paid">
+          <button
+            type="button"
+            className="button button--primary"
+            onClick={() => onMarkPaidClick(loan)}
+          >
             Mark as paid
           </button>
         )}
       </div>
 
-      {/* Bottom Action Icons */}
-      <div className="loan-bottom-actions">
+      <footer className="loan-card__footer">
         <button
+          type="button"
           onClick={() => onEditClick(loan)}
-          className="action-icon edit-icon"
+          className="icon-button"
           title="Edit loan"
         >
-          <FaEdit />
+          <FaEdit aria-hidden />
+          <span className="sr-only">Edit loan</span>
         </button>
         <button
+          type="button"
           onClick={moveToTrash}
           disabled={isProcessingTrash}
-          className="action-icon delete-icon"
+          className="icon-button icon-button--danger"
           title="Move to trash"
         >
-          <FaTrashAlt />
+          <FaTrashAlt aria-hidden />
+          <span className="sr-only">Move to trash</span>
         </button>
-      </div>
+      </footer>
     </li>
   );
 }

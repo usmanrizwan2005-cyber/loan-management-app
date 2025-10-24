@@ -97,6 +97,9 @@ export default function LoanForm({ onClose }) {
       setDueDate('');
       setPhoneError('');
       setTakenDate(new Date().toISOString().split('T')[0]);
+      if (typeof onClose === 'function') {
+        onClose();
+      }
     } catch (error) {
       toast.error(`Error adding loan: ${error.message}`);
     } finally {
@@ -106,9 +109,9 @@ export default function LoanForm({ onClose }) {
 
   return (
     <div className="loan-form-content">
-      <form onSubmit={handleSubmit}>
-        <div className="grid">
-          <label>
+      <form onSubmit={handleSubmit} className="loan-form">
+        <div className="loan-form__grid">
+          <label className="form-field">
             <span>Borrower's name</span>
             <input
               type="text"
@@ -118,12 +121,13 @@ export default function LoanForm({ onClose }) {
               placeholder="e.g. Sara Ahmed"
               className="input"
               required
+              style={{ fontSize: '16px' }}
             />
           </label>
 
-          <div className="space-y-2">
-            <span>Phone number <span className="text-[var(--color-muted)]">(optional)</span></span>
-            <div className="grid gap-3">
+          <div className="form-field">
+            <span>Phone number <span className="form-field__hint">(optional)</span></span>
+            <div className="form-field__group">
               <CountrySelect
                 countries={countries?.length ? countries : seedCountries}
                 value={phoneCountry}
@@ -161,13 +165,15 @@ export default function LoanForm({ onClose }) {
                   setPhoneError(result.ok ? '' : result.reason || 'Invalid phone number');
                 }}
                 placeholder={`+${phoneCountry?.dialCode || ''} 3xxxxxxxxx`}
-                className={`input ${phoneError ? '!border-[var(--color-error)] focus:!border-[var(--color-error)]' : ''}`}
+                className={`input${phoneError ? ' input--error' : ''}`}
+                aria-invalid={Boolean(phoneError)}
+                style={{ fontSize: '16px' }}
               />
             </div>
-            {phoneError && <p className="text-sm text-[var(--color-error)]">{phoneError}</p>}
+            {phoneError && <p className="form-field__error">{phoneError}</p>}
           </div>
 
-          <label>
+          <label className="form-field">
             <span>Amount</span>
             <input
               type="number"
@@ -195,10 +201,11 @@ export default function LoanForm({ onClose }) {
               placeholder="1000"
               className="input"
               required
+              style={{ fontSize: '16px' }}
             />
           </label>
 
-          <div>
+          <div className="form-field">
             <span>Currency</span>
             <CurrencySelect
               currencies={allCurrencies?.length ? allCurrencies : seedCurrencies}
@@ -209,7 +216,7 @@ export default function LoanForm({ onClose }) {
             />
           </div>
 
-          <label>
+          <label className="form-field">
             <span>Taken on</span>
             <input
               type="date"
@@ -218,10 +225,11 @@ export default function LoanForm({ onClose }) {
               onChange={(event) => setTakenDate(event.target.value)}
               className="input"
               required
+              style={{ fontSize: '16px' }}
             />
           </label>
 
-          <label>
+          <label className="form-field">
             <span>Due on</span>
             <input
               type="date"
@@ -230,15 +238,16 @@ export default function LoanForm({ onClose }) {
               onChange={(event) => setDueDate(event.target.value)}
               className="input"
               required
+              style={{ fontSize: '16px' }}
             />
           </label>
         </div>
 
-        <div className="flex flex-col gap-3">
-          <p className="text-sm text-[var(--color-muted)]">
+        <div className="loan-form__footer">
+          <p className="loan-form__note">
             You can add extensions, partial payments, and adjustments after the loan is created.
           </p>
-          <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+          <button type="submit" className="button button--primary button--stretch" disabled={isSubmitting}>
             {isSubmitting ? 'Adding...' : 'Add loan'}
           </button>
         </div>

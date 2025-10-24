@@ -20,7 +20,7 @@ import { FaCalendarAlt, FaCalendarCheck, FaReceipt, FaHistory, FaPhoneAlt } from
 function ModalChrome({ title, subtitle, badge, onClose, children }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl bg-[var(--color-surface)] shadow-2xl">
+      <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl bg-[var(--color-surface)] shadow-2xl sm:max-w-3xl max-w-full mx-2">
         <header className="relative bg-gradient-to-br from-[var(--color-primary)]/12 via-transparent to-transparent px-6 py-5 sm:px-8">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
@@ -28,10 +28,10 @@ function ModalChrome({ title, subtitle, badge, onClose, children }) {
               <h2 className="text-2xl font-semibold text-[var(--color-heading)]">{title}</h2>
               {subtitle && <p className="text-sm text-[var(--color-muted)]">{subtitle}</p>}
             </div>
-            <button onClick={onClose} className="btn btn-ghost px-3 py-2 text-sm">Close</button>
+            <button type="button" onClick={onClose} className="button button--ghost button--compact">Close</button>
           </div>
         </header>
-        <div className="max-h-[70vh] overflow-y-auto px-6 py-6 sm:px-8 sm:py-8 space-y-6">
+        <div className="max-h-[70vh] overflow-y-auto px-4 py-4 sm:px-8 sm:py-8 space-y-6">
           {children}
         </div>
       </div>
@@ -402,7 +402,7 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
       <p className="text-sm text-[var(--color-muted)]">
         We will keep a running history so you can always see the original agreement.
       </p>
-      <button type="submit" disabled={isSubmittingExtend} className="btn btn-primary w-full sm:w-auto px-6">
+      <button type="submit" disabled={isSubmittingExtend} className="button button--primary button--stretch">
         {isSubmittingExtend ? 'Saving...' : 'Save new date'}
       </button>
     </form>
@@ -563,7 +563,7 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-        <button type="submit" disabled={isSubmittingEdit} className="btn btn-primary w-full sm:w-auto px-6">
+        <button type="submit" disabled={isSubmittingEdit} className="button button--primary button--stretch">
           {isSubmittingEdit ? 'Saving...' : 'Save changes'}
         </button>
       </div>
@@ -630,7 +630,7 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
         </label>
       )}
 
-      <button type="submit" disabled={isSubmittingPaid} className="btn btn-success w-full sm:w-auto px-6">
+      <button type="submit" disabled={isSubmittingPaid} className="button button--success button--stretch">
         {isSubmittingPaid ? 'Saving...' : 'Save payment'}
       </button>
     </form>

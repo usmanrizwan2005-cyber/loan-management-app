@@ -61,42 +61,38 @@ export default function Trash() {
   };
 
   return (
-    <section className="card space-y-6">
-      <header className="space-y-2">
-        <h2 className="text-2xl font-semibold text-[var(--color-heading)]">Trash</h2>
-        <p className="text-sm text-[var(--color-muted)]">
-          Items stay here until you restore or permanently delete them.
-        </p>
+    <section className="data-panel data-panel--alt">
+      <header className="data-panel__header">
+        <div className="data-panel__titles">
+          <span className="data-panel__eyebrow">Archive</span>
+          <h2>Trash</h2>
+          <p>Restore items or delete them forever. Nothing disappears until you say so.</p>
+        </div>
       </header>
 
       {trashedLoans.length > 0 ? (
-        <ul className="space-y-4">
+        <ul className="trash-list">
           {trashedLoans.map((loan) => (
-            <li
-              key={loan.id}
-              className="surface flex flex-col gap-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-alt)]/60 p-5 shadow-inner sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="space-y-1">
-                <p className="text-lg font-semibold text-[var(--color-heading)]">{loan.borrowerName}</p>
-                <p className="text-sm text-[var(--color-muted)]">
-                  {formatCurrency(loan.amount, loan.currency)}
-                </p>
-                <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-muted)]">
-                  Trashed on {formatDate(loan.deletedAt)}
-                </p>
+            <li key={loan.id} className="trash-card">
+              <div className="trash-card__details">
+                <h3>{loan.borrowerName}</h3>
+                <p className="trash-card__amount">{formatCurrency(loan.amount, loan.currency)}</p>
+                <p className="trash-card__date">Trashed on {formatDate(loan.deletedAt)}</p>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="trash-card__actions">
                 <button
+                  type="button"
                   onClick={() => restoreLoan(loan.id)}
                   disabled={processingId === loan.id}
-                  className={`btn btn-outline px-4 py-2 ${processingId === loan.id ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  className="button button--surface"
                 >
                   {processingId === loan.id ? 'Restoring...' : 'Restore'}
                 </button>
                 <button
+                  type="button"
                   onClick={() => deleteForever(loan.id)}
                   disabled={processingId === loan.id}
-                  className={`btn btn-danger px-4 py-2 ${processingId === loan.id ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  className="button button--danger"
                 >
                   {processingId === loan.id ? 'Deleting...' : 'Delete forever'}
                 </button>
@@ -105,11 +101,9 @@ export default function Trash() {
           ))}
         </ul>
       ) : (
-        <div className="rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface-alt)]/70 px-6 py-12 text-center">
-          <h3 className="text-lg font-semibold text-[var(--color-heading)]">Trash is empty</h3>
-          <p className="mt-2 text-sm text-[var(--color-muted)]">
-            Anything you delete from your portfolio will appear here first.
-          </p>
+        <div className="data-panel__empty">
+          <h3>Trash is empty</h3>
+          <p>Anything you delete from your portfolio will appear here first.</p>
         </div>
       )}
     </section>

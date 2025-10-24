@@ -67,39 +67,48 @@ export default function LoanList({ loans }) {
 
 
   return (
-    <section className="card space-y-6">
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="space-y-2 text-center sm:text-left">
-          <h2 className="text-2xl font-semibold text-[var(--color-heading)]">Your loans</h2>
-          <p className="text-sm text-[var(--color-muted)]">
-            Filter by status, search by name or number, and open any record for deeper detail.
-          </p>
+    <section className="data-panel">
+      <header className="data-panel__header">
+        <div className="data-panel__titles">
+          <span className="data-panel__eyebrow">Portfolio</span>
+          <h2>Your loans</h2>
+          <p>Filter by status, search by name or phone, and open any record for deeper detail.</p>
         </div>
-        <div className="w-full max-w-md lg:w-auto lg:min-w-[320px]">
-          <input
-            type="text"
-            placeholder="Search by name or phone"
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-            className="input"
-          />
+        <div className="data-panel__search">
+          <label className="input-group">
+            <span className="sr-only">Search loans</span>
+            <input
+              type="text"
+              placeholder="Search by name or phone"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              className="input input--search"
+            />
+          </label>
         </div>
       </header>
 
-      <div className="grid grid-cols-2 gap-2 text-sm sm:flex sm:flex-wrap sm:items-center">
+      <div className="data-panel__filters" role="tablist" aria-label="Loan filters">
         {FILTERS.map((filter) => (
           <button
             key={filter.key}
+            type="button"
+            role="tab"
+            aria-selected={activeFilter === filter.key}
             onClick={() => setActiveFilter(filter.key)}
-            className={`btn px-4 py-2 w-full sm:w-auto ${activeFilter === filter.key ? 'btn-primary' : 'btn-surface'}`}
+            className={`chip${activeFilter === filter.key ? ' chip--active' : ''}`}
           >
             {filter.label}
           </button>
         ))}
       </div>
 
+      <div className="data-panel__meta" aria-live="polite">
+        Showing {filteredLoans.length} {filteredLoans.length === 1 ? 'loan' : 'loans'}
+      </div>
+
       {filteredLoans.length > 0 ? (
-        <ul className="space-y-4">
+        <ul className="data-panel__list">
           {filteredLoans.map((loan) => (
             <LoanItem
               key={loan.id}
@@ -112,11 +121,9 @@ export default function LoanList({ loans }) {
           ))}
         </ul>
       ) : (
-        <div className="rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface-alt)]/70 px-6 py-12 text-center">
-          <h3 className="text-lg font-semibold text-[var(--color-heading)]">No loans match your filters</h3>
-          <p className="mt-2 text-sm text-[var(--color-muted)]">
-            Try adjusting the status filter or search for another borrower.
-          </p>
+        <div className="data-panel__empty">
+          <h3>No loans match your filters</h3>
+          <p>Try adjusting the status filter or search for another borrower.</p>
         </div>
       )}
 
