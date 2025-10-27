@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, query, where, onSnapshot, getDocs, writeBatch } from 'firebase/firestore';
 import { Toaster } from 'react-hot-toast';
@@ -7,11 +7,12 @@ import {
   FaSignOutAlt,
   FaCog,
   FaChartPie,
-  FaClock,
   FaPlus,
   FaTrashAlt,
-  FaCalendarAlt,
   FaExclamationTriangle,
+  FaWallet,
+  FaBalanceScale,
+  FaTimes,
 } from 'react-icons/fa';
 import { auth, db } from './firebase';
 import { toJSDate, formatCurrency, formatDate } from './utils/helpers';
@@ -50,19 +51,20 @@ const PALETTE_CHOICES = [
 
 const PALETTES = {
   custom: {
-    '--color-primary': '#2563eb',
-    '--color-primary-hover': '#1d4ed8',
-    '--color-primary-active': '#1e40af',
-    '--color-accent': '#0ea5e9',
-    '--color-info': '#38bdf8',
+    '--color-primary': '#2f44ff',
+    '--color-primary-hover': '#2637db',
+    '--color-primary-active': '#1d2cae',
+    '--color-accent': '#2cb1bc',
+    '--color-info': '#3a8bff',
     '--color-surface': '#ffffff',
-    '--color-surface-alt': 'rgba(255, 255, 255, 0.75)',
-    '--color-border': '#d8def4',
-    '--color-border-strong': '#c5cbea',
-    '--color-bg': '#f3f4ff',
-    '--color-muted': '#64748b',
-    '--color-text': '#0f172a',
-    '--color-heading': '#0b1220',
+    '--color-surface-alt': 'rgba(244, 246, 252, 0.9)',
+    '--color-border': 'rgba(15, 23, 42, 0.08)',
+    '--color-border-strong': 'rgba(15, 23, 42, 0.14)',
+    '--color-bg': '#f7f8fb',
+    '--color-muted': '#667085',
+    '--color-text': '#1d2433',
+    '--color-heading': '#111827',
+    '--color-page-gradient': 'radial-gradient(circle at 8% 12%, rgba(86, 112, 255, 0.12), transparent 60%), radial-gradient(circle at 92% 10%, rgba(44, 177, 188, 0.12), transparent 55%), linear-gradient(180deg, #f9f9fc 0%, #eef2f9 100%)',
   },
   sky: {
     '--color-primary': '#0ea5e9',
@@ -248,11 +250,123 @@ function App() {
   const [itemsPerPage, setItemsPerPage] = useState(() => Number(localStorage.getItem('itemsPerPage') || 10));
   const [defaultCurrency, setDefaultCurrency] = useState(() => localStorage.getItem('preferredCurrency') || 'PKR');
   const [currencyLocale, setCurrencyLocale] = useState(() => localStorage.getItem('currencyLocale') || 'en-US');
+  
+  // Use refs to track current screen and viewMode for navigation
+  const screenRef = useRef(screen);
+  const viewModeRef = useRef(viewMode);
+  
+  // Update refs whenever state changes
+  useEffect(() => {
+    screenRef.current = screen;
+  }, [screen]);
+  
+  useEffect(() => {
+    viewModeRef.current = viewMode;
+  }, [viewMode]);
 
+  const navigate = (newScreen, newViewMode = null, shouldAddToHistory = true) => {
+    // Save current state to history before navigating (using refs to get current values)
+    if (shouldAddToHistory && screenRef.current !== newScreen) {
+      const currentState = { screen: screenRef.current, viewMode: viewModeRef.current };
+      window.history.pushState(currentState, '', `#${newScreen}`);
+    }
+    // Update screen and view mode
+    setScreen(newScreen);
+    if (newViewMode !== null) {
+      setViewMode(newViewMode);
+    }
+  };
+
+  const goBack = () => {
+    window.history.back();
+  };
+
+  // Initialize from URL hash on mount
+  useEffect(() => {
+    if (!user) return; // Don't initialize navigation before user is loaded
+    const hash = window.location.hash.slice(1);
+    if (hash && (hash === SCREEN_DASHBOARD || hash === SCREEN_SETTINGS || hash.startsWith('dashboard-'))) {
+      let targetScreen = SCREEN_DASHBOARD;
+      let targetViewMode = 'loans';
+      
+      if (hash.startsWith('dashboard-')) {
+        targetScreen = SCREEN_DASHBOARD;
+        if (hash === 'dashboard-trash') {
+          targetViewMode = 'trash';
+        }
+      } else if (hash === SCREEN_SETTINGS) {
+        targetScreen = SCREEN_SETTINGS;
+      }
+      
+      setScreen(targetScreen);
+      setViewMode(targetViewMode);
+    }
+  }, [user]);
+
+  const openLoanForm = () => {
+    if (viewMode !== 'loans') {
+      setViewMode('loans');
+    }
+    setShowLoanForm(true);
+  };
+
+  const handleViewModeChange = (mode) => {
+    const prevMode = viewModeRef.current;
+    if (mode === 'trash') {
+      setShowLoanForm(false);
+    }
+    // Track view mode changes in browser history
+    if (screenRef.current === SCREEN_DASHBOARD && prevMode !== mode) {
+      window.history.pushState({ screen: screenRef.current, viewMode: prevMode }, '', `#dashboard-${mode}`);
+    }
+    setViewMode(mode);
+  };
+
+  // Handle browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = (event) => {
+      // Get the state from browser history
+      const state = event.state;
+      if (state && state.screen) {
+        setScreen(state.screen);
+        if (state.viewMode !== null && state.viewMode !== undefined) {
+          setViewMode(state.viewMode);
+        }
+        if (state.viewMode === 'trash') {
+          setShowLoanForm(false);
+        }
+      } else {
+        // If no state, try to get screen from URL hash
+        const hash = window.location.hash.slice(1);
+        if (hash && hash === SCREEN_WELCOME) {
+          setScreen(SCREEN_WELCOME);
+        } else if (hash && hash === SCREEN_SETTINGS) {
+          setScreen(SCREEN_SETTINGS);
+        } else if (hash && hash.startsWith('dashboard-')) {
+          setScreen(SCREEN_DASHBOARD);
+          if (hash === 'dashboard-trash') {
+            setViewMode('trash');
+          } else {
+            setViewMode('loans');
+          }
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Initialize screen and history when user loads
   useEffect(() => {
     if (user) {
-      setScreen(SCREEN_WELCOME);
       setShowLoanForm(false);
+      // Initialize browser history with welcome screen only if no hash exists
+      if (!window.location.hash || window.location.hash === '#') {
+        setScreen(SCREEN_WELCOME);
+        // Use replaceState for initial state, not pushState
+        window.history.replaceState({ screen: SCREEN_WELCOME, viewMode: 'loans' }, '', `#${SCREEN_WELCOME}`);
+      }
     }
   }, [user]);
 
@@ -402,34 +516,12 @@ function App() {
     if (!loans.length) return 0;
     return totals.total / loans.length;
   }, [loans, totals.total]);
-  const nextDueLoan = useMemo(() => {
-    return (
-      loans
-        .map((loan) => {
-          const due = toJSDate(loan.dueDate);
-          const isSettled = loan.repaidAt || loan.status === 'paid';
-          if (!due || isSettled) return null;
-          return { loan, due };
-        })
-        .filter(Boolean)
-        .sort((a, b) => a.due.getTime() - b.due.getTime())[0] || null
-    );
-  }, [loans]);
-  const latestLoan = loans.length ? loans[0] : null;
-  const userFirstName = useMemo(() => {
-    if (!user) return '';
-    if (user.displayName) {
-      return user.displayName.split(' ')[0];
-    }
-    if (user.email) {
-      return user.email.split('@')[0];
-    }
-    return '';
-  }, [user]);
+  const attentionCount = lateCount + dueSoonCount;
 
   const handleLogout = () => {
     auth.signOut();
-    setScreen(SCREEN_WELCOME);
+    // Clear browser history on logout
+    window.history.replaceState({ screen: SCREEN_WELCOME, viewMode: 'loans' }, '', `#${SCREEN_WELCOME}`);
   };
 
   if (loading) {
@@ -468,7 +560,7 @@ function App() {
               </ul>
 
               <div className="welcome-card__actions">
-                <button type="button" className="button button--primary button--stretch" onClick={() => setScreen(SCREEN_DASHBOARD)}>
+                <button type="button" className="button button--primary button--stretch" onClick={() => navigate(SCREEN_DASHBOARD)}>
                   Continue
                   <FaArrowRight aria-hidden />
                 </button>
@@ -490,7 +582,7 @@ function App() {
       <>
         <Toaster position="top-center" />
         <SettingsScreen
-          onBack={() => setScreen(SCREEN_DASHBOARD)}
+          onBack={goBack}
           dark={dark}
           onToggleDark={() => setDark((previous) => !previous)}
           themePalette={themePalette}
@@ -510,26 +602,50 @@ function App() {
     <>
       <Toaster position="top-center" />
       <div className="screen dashboard-screen">
-        <header className="dashboard-header">
-          <div className="dashboard-header__intro">
-            <span className="dashboard-header__badge">Loan Manager</span>
-            <h1>
-              {userFirstName ? `Welcome back, ${userFirstName}` : 'Portfolio overview'}
-            </h1>
-            <p>
-              {activeLoansCount
-                ? 'Monitor repayments and upcoming obligations in one place.'
-                : 'Add your first loan to start tracking repayments and reminders.'}
-            </p>
+        <header className="dashboard-topbar">
+          <div className="dashboard-topbar__brand">
+            <span className="dashboard-topbar__mark">LM</span>
+            <span className="dashboard-topbar__title">Loan Manager</span>
           </div>
-          <div className="dashboard-header__actions">
+          <nav className="dashboard-topbar__nav" aria-label="Primary">
             <button
               type="button"
-              className="button button--primary"
-              onClick={() => setShowLoanForm(true)}
+              className={`topbar-tab${viewMode === 'loans' ? ' is-active' : ''}`}
+              onClick={() => handleViewModeChange('loans')}
+              aria-pressed={viewMode === 'loans'}
             >
-              <FaPlus aria-hidden />
-              <span>New loan</span>
+              Portfolio
+            </button>
+            <button
+              type="button"
+              className={`topbar-tab${viewMode === 'trash' ? ' is-active' : ''}`}
+              onClick={() => handleViewModeChange('trash')}
+              aria-pressed={viewMode === 'trash'}
+            >
+              Archive
+            </button>
+            <button
+              type="button"
+              className="topbar-tab"
+              onClick={() => navigate(SCREEN_SETTINGS)}
+            >
+              Settings
+            </button>
+          </nav>
+          <div className="dashboard-topbar__actions">
+            <button
+              type="button"
+              className="button button--surface"
+              onClick={() => {
+                if (showLoanForm) {
+                  setShowLoanForm(false);
+                } else {
+                  openLoanForm();
+                }
+              }}
+            >
+              {showLoanForm ? <FaTimes aria-hidden /> : <FaPlus aria-hidden />}
+              <span>{showLoanForm ? 'Close form' : 'New loan'}</span>
             </button>
             <button
               type="button"
@@ -542,173 +658,99 @@ function App() {
           </div>
         </header>
 
-        <section className="dashboard-summary" aria-label="Portfolio summary">
-          <article className="summary-card">
-            <span className="summary-card__label">Outstanding balance</span>
-            <strong className="summary-card__value">
-              {formatCurrency(totals.remaining, defaultCurrency, currencyLocale)}
-            </strong>
-            <p className="summary-card__meta">
-              {totals.total
-                ? `${Math.max(0, 100 - repaymentProgress)}% of principal still open`
-                : 'Awaiting your first loan'}
-            </p>
-          </article>
-          <article className="summary-card">
-            <span className="summary-card__label">Cash repaid</span>
-            <strong className="summary-card__value">
-              {formatCurrency(totals.paid, defaultCurrency, currencyLocale)}
-            </strong>
-            <p className="summary-card__meta">
-              {totals.paid
-                ? `Across ${activeLoansCount} active ${activeLoansCount === 1 ? 'loan' : 'loans'}`
-                : 'No repayments captured yet'}
-            </p>
-          </article>
-          <article className="summary-card">
-            <span className="summary-card__label">Active loans</span>
-            <strong className="summary-card__value">{activeLoansCount}</strong>
-            <p className="summary-card__meta">
-              {activeLoansCount
-                ? `Avg ticket ${formatCurrency(averageLoanAmount, defaultCurrency, currencyLocale)}${latestLoan ? ` | Last added ${formatDate(latestLoan.createdAt)}` : ''}`
-                : 'Create a new loan to get started'}
-            </p>
-          </article>
-        </section>
-
         <main className="dashboard-content">
-          <section className="panel insight-panel">
-            <div className="panel__header">
-              <div className="panel__icon">
-                <FaChartPie aria-hidden />
+          {showLoanForm && viewMode === 'loans' ? (
+            <section className="panel">
+              <div className="panel__header">
+                <div className="panel__icon panel__icon--accent">
+                  <FaPlus aria-hidden />
+                </div>
+                <div>
+                  <span className="panel__eyebrow">Add record</span>
+                  <h2>Create a new loan</h2>
+                  <p>Capture borrower details, amounts, and upcoming repayments.</p>
+                </div>
               </div>
-              <div>
-                <span className="panel__eyebrow">Performance</span>
-                <h2>Repayment progress</h2>
-                <p>
-                  <strong>{repaymentProgress}%</strong> of portfolio repaid
-                </p>
-              </div>
-            </div>
 
-            <div className="insight-panel__progress">
-              <div className="progress-track">
-                <div className="progress-bar" style={{ width: `${repaymentProgress}%` }} />
+              <div className="panel__actions">
+                <button
+                  type="button"
+                  className="button button--ghost button--pill"
+                  onClick={() => setShowLoanForm(false)}
+                >
+                  Cancel
+                </button>
               </div>
-              <div className="progress-meta">
-                <span>{formatCurrency(totals.paid, defaultCurrency, currencyLocale)} repaid</span>
-                <span>{formatCurrency(totals.remaining, defaultCurrency, currencyLocale)} outstanding</span>
-              </div>
-            </div>
 
-            <div className="insight-panel__metrics">
-              <article className="metric-card metric-card--warning">
-                <div className="metric-card__icon">
-                  <FaExclamationTriangle aria-hidden />
+              <LoanForm onClose={() => setShowLoanForm(false)} />
+            </section>
+          ) : viewMode === 'loans' && !showLoanForm ? (
+            <section className="panel insight-panel">
+              <div className="panel__header">
+                <div className="panel__icon">
+                  <FaChartPie aria-hidden />
                 </div>
                 <div>
-                  <span className="metric-card__label">Late loans</span>
-                  <strong className="metric-card__value">{lateCount}</strong>
-                  <p>{lateCount ? 'Needs attention today' : 'All accounts on time'}</p>
-                </div>
-              </article>
-              <article className="metric-card metric-card--info">
-                <div className="metric-card__icon">
-                  <FaClock aria-hidden />
-                </div>
-                <div>
-                  <span className="metric-card__label">Due this week</span>
-                  <strong className="metric-card__value">{dueSoonCount}</strong>
-                  <p>{dueSoonCount ? 'Schedule follow-ups' : 'No upcoming deadlines'}</p>
-                </div>
-              </article>
-              <article className="metric-card metric-card--neutral">
-                <div className="metric-card__icon">
-                  <FaCalendarAlt aria-hidden />
-                </div>
-                <div>
-                  <span className="metric-card__label">Next due date</span>
-                  <strong className="metric-card__value">
-                    {nextDueLoan ? formatDate(nextDueLoan.due) : 'All caught up'}
-                  </strong>
+                  <span className="panel__eyebrow">Performance</span>
+                  <h2>Repayment progress</h2>
                   <p>
-                    {nextDueLoan
-                      ? `${nextDueLoan.loan.borrowerName || 'Borrower'} - ${formatCurrency(
-                          nextDueLoan.loan.amount,
-                          nextDueLoan.loan.currency || defaultCurrency,
-                          currencyLocale
-                        )}`
-                      : 'No open balances pending'}
+                    <strong>{repaymentProgress}%</strong> of portfolio repaid
                   </p>
                 </div>
-              </article>
-            </div>
-          </section>
+              </div>
 
-          <section className="panel create-panel">
-            <div className="panel__header">
-              <div className="panel__icon panel__icon--accent">
-                <FaPlus aria-hidden />
+              <div className="insight-panel__progress">
+                <div className="progress-track">
+                  <div className="progress-bar" style={{ width: `${repaymentProgress}%` }} />
+                </div>
+                <div className="progress-meta">
+                  <span>{repaymentProgress}% collected</span>
+                  <span>{Math.max(0, 100 - repaymentProgress)}% still open</span>
+                </div>
               </div>
-              <div>
-                <span className="panel__eyebrow">Add record</span>
-                <h2>Create a new loan</h2>
-                <p>Capture borrower details, amounts, and upcoming repayments in a few taps.</p>
-              </div>
-            </div>
 
-            <div className="panel__actions">
-              <button
-                type="button"
-                className={`button ${showLoanForm ? 'button--ghost' : 'button--surface'} button--pill`}
-                onClick={() => setShowLoanForm((previous) => !previous)}
-              >
-                {showLoanForm ? 'Close builder' : 'Open loan form'}
-              </button>
-            </div>
-
-            {showLoanForm ? (
-              <div className="create-panel__form">
-                <LoanForm onClose={() => setShowLoanForm(false)} />
+              <div className="insight-panel__metrics">
+                <article className="metric-card metric-card--info">
+                  <div className="metric-card__icon">
+                    <FaWallet aria-hidden />
+                  </div>
+                  <div>
+                    <span className="metric-card__label">Cash repaid</span>
+                    <strong className="metric-card__value">
+                      {formatCurrency(totals.paid, defaultCurrency, currencyLocale)}
+                    </strong>
+                    <p>{totals.paid ? 'Recorded repayments to date' : 'No repayments captured yet'}</p>
+                  </div>
+                </article>
+                <article className="metric-card metric-card--success">
+                  <div className="metric-card__icon">
+                    <FaBalanceScale aria-hidden />
+                  </div>
+                  <div>
+                    <span className="metric-card__label">Average ticket</span>
+                    <strong className="metric-card__value">
+                      {formatCurrency(averageLoanAmount, defaultCurrency, currencyLocale)}
+                    </strong>
+                    <p>{activeLoansCount ? 'Mean size of active portfolio' : 'Create a loan to set the baseline'}</p>
+                  </div>
+                </article>
+                <article className="metric-card metric-card--warning">
+                  <div className="metric-card__icon">
+                    <FaExclamationTriangle aria-hidden />
+                  </div>
+                  <div>
+                    <span className="metric-card__label">Attention needed</span>
+                    <strong className="metric-card__value">{attentionCount}</strong>
+                    <p>
+                      {lateCount || dueSoonCount
+                        ? `${lateCount} late - ${dueSoonCount} due shortly`
+                        : 'All timelines look healthy'}
+                    </p>
+                  </div>
+                </article>
               </div>
-            ) : (
-              <ul className="panel__tips">
-                <li>Store phone numbers with automatic country code detection.</li>
-                <li>Track partial repayments and adjustments over time.</li>
-                <li>Your workspace stays in sync instantly through Firebase.</li>
-              </ul>
-            )}
-          </section>
-
-          <section className="panel views-panel">
-            <div className="views-panel__header">
-              <div>
-                <span className="panel__eyebrow">Workspace</span>
-                <h2>{viewMode === 'loans' ? 'Active portfolio' : 'Trash bin'}</h2>
-                <p>Switch between live records and archived items.</p>
-              </div>
-              <div className="views-panel__tabs" role="tablist" aria-label="Loan views">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={viewMode === 'loans'}
-                  className={`tab-chip${viewMode === 'loans' ? ' tab-chip--active' : ''}`}
-                  onClick={() => setViewMode('loans')}
-                >
-                  Portfolio
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={viewMode === 'trash'}
-                  className={`tab-chip${viewMode === 'trash' ? ' tab-chip--active' : ''}`}
-                  onClick={() => setViewMode('trash')}
-                >
-                  Trash
-                </button>
-              </div>
-            </div>
-          </section>
+            </section>
+          ) : null}
 
           {viewMode === 'loans' ? (
             <LoanList loans={loans} />
@@ -721,7 +763,7 @@ function App() {
           <button
             type="button"
             className={`mobile-dock__item${viewMode === 'loans' ? ' mobile-dock__item--active' : ''}`}
-            onClick={() => setViewMode('loans')}
+            onClick={() => handleViewModeChange('loans')}
           >
             <FaChartPie aria-hidden />
             <span>Portfolio</span>
@@ -729,7 +771,13 @@ function App() {
           <button
             type="button"
             className={`mobile-dock__item${showLoanForm ? ' mobile-dock__item--active' : ''}`}
-            onClick={() => setShowLoanForm((previous) => !previous)}
+            onClick={() => {
+              if (showLoanForm) {
+                setShowLoanForm(false);
+              } else {
+                openLoanForm();
+              }
+            }}
           >
             <FaPlus aria-hidden />
             <span>{showLoanForm ? 'Close form' : 'New loan'}</span>
@@ -737,7 +785,7 @@ function App() {
           <button
             type="button"
             className={`mobile-dock__item${viewMode === 'trash' ? ' mobile-dock__item--active' : ''}`}
-            onClick={() => setViewMode('trash')}
+            onClick={() => handleViewModeChange('trash')}
           >
             <FaTrashAlt aria-hidden />
             <span>Trash</span>
@@ -745,7 +793,7 @@ function App() {
           <button
             type="button"
             className="mobile-dock__item"
-            onClick={() => setScreen(SCREEN_SETTINGS)}
+            onClick={() => navigate(SCREEN_SETTINGS)}
           >
             <FaCog aria-hidden />
             <span>Settings</span>
