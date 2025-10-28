@@ -68,7 +68,6 @@ export default function LoanItem({
   const amountValue = Number(loan.amount || 0);
   const amountLabel = formatCurrency(loan.amount, loan.currency);
   const remainingLabel = formatCurrency(remaining, loan.currency);
-  const paidLabel = formatCurrency(totalPaid, loan.currency);
   const repaymentPercent = amountValue > 0 ? Math.min(100, Math.round((totalPaid / amountValue) * 100)) : 0;
   const daysUntilDue = Math.ceil((dueDateOnly - today) / (1000 * 60 * 60 * 24));
   const dueDateLabel = formatDate(loan.dueDate);
@@ -116,16 +115,7 @@ export default function LoanItem({
           <strong>{amountLabel}</strong>
         </div>
 
-        <div className="loan-card__stats">
-          <div>
-            <span>Paid</span>
-            <strong>{paidLabel}</strong>
-          </div>
-          <div>
-            <span>Remaining</span>
-            <strong>{remainingLabel}</strong>
-          </div>
-        </div>
+        {/* Removed Paid/Remaining stat boxes from front of loans */}
 
         <div className="loan-card__timeline">
           <span className="loan-card__timeline-label">{timelineDescriptor}</span>

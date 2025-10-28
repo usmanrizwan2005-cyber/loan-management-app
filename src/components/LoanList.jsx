@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import LoanItem from './LoanItem';
 import LoanModal from './LoanModal';
+import { FaChevronDown, FaCheck } from 'react-icons/fa';
 
 const FILTERS = [
   { key: 'All', label: 'All loans' },
@@ -23,6 +24,19 @@ export default function LoanList({
 }) {
   const [activeFilter, setActiveFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const filterDropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target)) {
+        setIsFilterOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
 
   const enhancedLoans = useMemo(() => {
     const now = new Date();
@@ -78,19 +92,47 @@ export default function LoanList({
         </div>
       </header>
 
-      <div className="data-panel__filters" role="tablist" aria-label="Loan filters">
-        {FILTERS.map((filter) => (
+      <div className="data-panel__filters">
+        <div ref={filterDropdownRef} className="relative inline-block">
           <button
-            key={filter.key}
             type="button"
-            role="tab"
-            aria-selected={activeFilter === filter.key}
-            onClick={() => setActiveFilter(filter.key)}
-            className={`chip${activeFilter === filter.key ? ' chip--active' : ''}`}
+            onClick={() => setIsFilterOpen((open) => !open)}
+            aria-haspopup="listbox"
+            aria-expanded={isFilterOpen}
+            className="button button--surface rounded-full px-4 py-2 flex items-center gap-2 shadow-sm"
           >
-            {filter.label}
+            <span>Filter by Status</span>
+            <FaChevronDown aria-hidden className={`transition-transform duration-200 ${isFilterOpen ? 'rotate-180' : ''}`} />
           </button>
-        ))}
+
+          <ul
+            role="listbox"
+            className={`absolute z-20 mt-2 w-56 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl ring-1 ring-black/5 overflow-hidden transform transition-all duration-150 origin-top ${
+              isFilterOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'
+            }`}
+          >
+            {FILTERS.map((filter) => {
+              const selected = activeFilter === filter.key;
+              return (
+                <li key={filter.key} role="option" aria-selected={selected}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveFilter(filter.key);
+                      setIsFilterOpen(false);
+                    }}
+                    className={`w-full text-left px-4 py-3 flex items-center justify-between hover:bg-[var(--color-surface-alt)] focus:bg-[var(--color-surface-alt)] ${
+                      selected ? 'text-[var(--color-primary)] font-medium' : 'text-[var(--color-text)]'
+                    }`}
+                  >
+                    <span>{filter.label}</span>
+                    {selected && <FaCheck aria-hidden />}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </div>
 
       <div className="data-panel__meta" aria-live="polite">
