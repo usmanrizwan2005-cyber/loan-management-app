@@ -10,12 +10,19 @@ const FILTERS = [
   { key: 'Paid', label: 'Paid' },
 ];
 
-export default function LoanList({ loans }) {
+export default function LoanList({
+  loans,
+  modalLoan,
+  modalView,
+  initialPaymentType,
+  onOpenDetails,
+  onOpenExtend,
+  onOpenEdit,
+  onOpenMarkPaid,
+  onCloseModal,
+}) {
   const [activeFilter, setActiveFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
-  const [modalLoan, setModalLoan] = useState(null);
-  const [modalView, setModalView] = useState('details');
-  const [initialPaymentType, setInitialPaymentType] = useState('full');
 
   const enhancedLoans = useMemo(() => {
     const now = new Date();
@@ -44,26 +51,10 @@ export default function LoanList({ loans }) {
       });
   }, [enhancedLoans, activeFilter, searchTerm]);
 
-  const handleDetailsClick = (loan) => {
-    setModalView('details');
-    setModalLoan(loan);
-  };
-
-  const handleExtendClick = (loan) => {
-    setModalView('extend');
-    setModalLoan(loan);
-  };
-
-  const handleEditClick = (loan) => {
-    setModalView('edit');
-    setModalLoan(loan);
-  };
-
-  const handleMarkPaidClick = (loan) => {
-    setInitialPaymentType('full');
-    setModalView('markPaid');
-    setModalLoan(loan);
-  };
+  const handleDetailsClick = (loan) => onOpenDetails?.(loan);
+  const handleExtendClick = (loan) => onOpenExtend?.(loan);
+  const handleEditClick = (loan) => onOpenEdit?.(loan);
+  const handleMarkPaidClick = (loan) => onOpenMarkPaid?.(loan);
 
 
   return (
@@ -72,7 +63,6 @@ export default function LoanList({ loans }) {
         <div className="data-panel__titles">
           <span className="data-panel__eyebrow">Portfolio</span>
           <h2>Your loans</h2>
-          <p>Filter by status, search by name or phone, and open any record for deeper detail.</p>
         </div>
         <div className="data-panel__search">
           <label className="input-group">
@@ -131,7 +121,7 @@ export default function LoanList({ loans }) {
         <LoanModal
           loan={modalLoan}
           viewType={modalView}
-          onClose={() => setModalLoan(null)}
+          onClose={onCloseModal}
           initialPaymentType={initialPaymentType}
         />
       )}

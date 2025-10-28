@@ -29,6 +29,7 @@ const SCREEN_SETTINGS = 'settings';
 
 const VIEW_MODES = [
   { key: 'loans', label: 'Portfolio' },
+  { key: 'insights', label: 'Insights' },
   { key: 'trash', label: 'Trash' },
 ];
 
@@ -173,6 +174,30 @@ const PALETTES = {
   },
 };
 
+const buildHistoryHash = (screenKey, viewModeValue = null) => {
+  if (screenKey === SCREEN_DASHBOARD) {
+    let suffix = '';
+    if (viewModeValue === 'trash') suffix = '-trash';
+    else if (viewModeValue === 'insights') suffix = '-insights';
+    return `#dashboard${suffix}`;
+  }
+  return `#${screenKey}`;
+};
+
+const buildHistoryState = (screenKey, viewModeValue = null, fallbackViewMode = 'loans') => {
+  if (screenKey === SCREEN_DASHBOARD) {
+    return {
+      screen: SCREEN_DASHBOARD,
+      viewMode: viewModeValue ?? fallbackViewMode ?? 'loans',
+    };
+  }
+
+  return {
+    screen: screenKey,
+    viewMode: fallbackViewMode ?? null,
+  };
+};
+
 function SettingsScreen({
   onBack,
   dark,
@@ -250,6 +275,10 @@ function App() {
   const [itemsPerPage, setItemsPerPage] = useState(() => Number(localStorage.getItem('itemsPerPage') || 10));
   const [defaultCurrency, setDefaultCurrency] = useState(() => localStorage.getItem('preferredCurrency') || 'PKR');
   const [currencyLocale, setCurrencyLocale] = useState(() => localStorage.getItem('currencyLocale') || 'en-US');
+  // Modal state lifted to App for history-aware back behavior
+  const [modalLoanId, setModalLoanId] = useState(null);
+  const [modalView, setModalView] = useState('details');
+  const [initialPaymentType, setInitialPaymentType] = useState('full');
   
   // Use refs to track current screen and viewMode for navigation
   const screenRef = useRef(screen);
@@ -265,12 +294,29 @@ function App() {
   }, [viewMode]);
 
   const navigate = (newScreen, newViewMode = null, shouldAddToHistory = true) => {
-    // Save current state to history before navigating (using refs to get current values)
-    if (shouldAddToHistory && screenRef.current !== newScreen) {
-      const currentState = { screen: screenRef.current, viewMode: viewModeRef.current };
-      window.history.pushState(currentState, '', `#${newScreen}`);
+    const fallbackViewMode = viewModeRef.current || 'loans';
+    const resolvedViewMode =
+      newScreen === SCREEN_DASHBOARD ? (newViewMode !== null ? newViewMode : fallbackViewMode) : null;
+    const targetState = buildHistoryState(newScreen, resolvedViewMode, fallbackViewMode);
+    const targetHash = buildHistoryHash(newScreen, targetState.viewMode);
+
+    if (shouldAddToHistory) {
+      const currentView = viewModeRef.current;
+      const isDifferentScreen = screenRef.current !== targetState.screen;
+      const viewHasChanged =
+        targetState.screen === SCREEN_DASHBOARD && targetState.viewMode !== currentView;
+
+      if (isDifferentScreen || viewHasChanged) {
+        // Push the TARGET state so back goes to the previous screen step-by-step
+        window.history.pushState(targetState, '', targetHash);
+      } else {
+        // Avoid duplicate entries when navigating to the same target
+        window.history.replaceState(targetState, '', targetHash);
+      }
+    } else {
+      window.history.replaceState(targetState, '', targetHash);
     }
-    // Update screen and view mode
+
     setScreen(newScreen);
     if (newViewMode !== null) {
       setViewMode(newViewMode);
@@ -281,25 +327,47 @@ function App() {
     window.history.back();
   };
 
+  const openLoanModal = (loanId, viewType, paymentType = 'full') => {
+    const currentView = viewModeRef.current || 'loans';
+    // Push a target state with modal info so Back closes the modal first
+    const baseState = buildHistoryState(SCREEN_DASHBOARD, currentView, currentView);
+    const modalState = { ...baseState, modal: { type: viewType, loanId, initialPaymentType: paymentType } };
+    window.history.pushState(modalState, '', buildHistoryHash(SCREEN_DASHBOARD, baseState.viewMode));
+    setModalLoanId(loanId);
+    setModalView(viewType);
+    setInitialPaymentType(paymentType || 'full');
+  };
+
+  const closeLoanModalViaBack = () => {
+    // Pop the modal state to return to dashboard without modal
+    window.history.back();
+  };
+
   // Initialize from URL hash on mount
   useEffect(() => {
     if (!user) return; // Don't initialize navigation before user is loaded
     const hash = window.location.hash.slice(1);
-    if (hash && (hash === SCREEN_DASHBOARD || hash === SCREEN_SETTINGS || hash.startsWith('dashboard-'))) {
-      let targetScreen = SCREEN_DASHBOARD;
-      let targetViewMode = 'loans';
-      
-      if (hash.startsWith('dashboard-')) {
-        targetScreen = SCREEN_DASHBOARD;
-        if (hash === 'dashboard-trash') {
-          targetViewMode = 'trash';
-        }
-      } else if (hash === SCREEN_SETTINGS) {
-        targetScreen = SCREEN_SETTINGS;
+    if (hash) {
+      if (hash === SCREEN_SETTINGS) {
+        const state = buildHistoryState(SCREEN_SETTINGS, null, viewModeRef.current || 'loans');
+        window.history.replaceState(state, '', buildHistoryHash(SCREEN_SETTINGS, state.viewMode));
+        setScreen(SCREEN_SETTINGS);
+        return;
       }
-      
-      setScreen(targetScreen);
-      setViewMode(targetViewMode);
+      if (hash === SCREEN_DASHBOARD || hash.startsWith('dashboard-')) {
+        const view = hash === 'dashboard-trash' ? 'trash' : hash === 'dashboard-insights' ? 'insights' : 'loans';
+        const state = buildHistoryState(SCREEN_DASHBOARD, view, viewModeRef.current || 'loans');
+        window.history.replaceState(state, '', buildHistoryHash(SCREEN_DASHBOARD, view));
+        setScreen(SCREEN_DASHBOARD);
+        setViewMode(view);
+        return;
+      }
+      if (hash === SCREEN_WELCOME) {
+        const state = buildHistoryState(SCREEN_WELCOME, null, viewModeRef.current || 'loans');
+        window.history.replaceState(state, '', buildHistoryHash(SCREEN_WELCOME));
+        setScreen(SCREEN_WELCOME);
+        return;
+      }
     }
   }, [user]);
 
@@ -312,13 +380,21 @@ function App() {
 
   const handleViewModeChange = (mode) => {
     const prevMode = viewModeRef.current;
-    if (mode === 'trash') {
+    if (prevMode === mode) {
+      return;
+    }
+
+    if (mode !== 'loans') {
       setShowLoanForm(false);
     }
-    // Track view mode changes in browser history
-    if (screenRef.current === SCREEN_DASHBOARD && prevMode !== mode) {
-      window.history.pushState({ screen: screenRef.current, viewMode: prevMode }, '', `#dashboard-${mode}`);
+
+    if (screenRef.current === SCREEN_DASHBOARD) {
+      const historyState = buildHistoryState(SCREEN_DASHBOARD, mode, prevMode || 'loans');
+      const historyHash = buildHistoryHash(SCREEN_DASHBOARD, historyState.viewMode);
+      // Push the TARGET dashboard view so back returns to the previous view/screen
+      window.history.pushState(historyState, '', historyHash);
     }
+
     setViewMode(mode);
   };
 
@@ -335,19 +411,41 @@ function App() {
         if (state.viewMode === 'trash') {
           setShowLoanForm(false);
         }
+        // Sync modal state from history
+        if (state.modal && state.modal.loanId && state.screen === SCREEN_DASHBOARD) {
+          setModalLoanId(state.modal.loanId);
+          setModalView(state.modal.type || 'details');
+          setInitialPaymentType(state.modal.initialPaymentType || 'full');
+        } else {
+          setModalLoanId(null);
+        }
       } else {
         // If no state, try to get screen from URL hash
         const hash = window.location.hash.slice(1);
-        if (hash && hash === SCREEN_WELCOME) {
-          setScreen(SCREEN_WELCOME);
-        } else if (hash && hash === SCREEN_SETTINGS) {
-          setScreen(SCREEN_SETTINGS);
-        } else if (hash && hash.startsWith('dashboard-')) {
-          setScreen(SCREEN_DASHBOARD);
-          if (hash === 'dashboard-trash') {
-            setViewMode('trash');
-          } else {
-            setViewMode('loans');
+        if (hash) {
+          if (hash === SCREEN_WELCOME) {
+            const welcomeState = buildHistoryState(SCREEN_WELCOME, null, viewModeRef.current || 'loans');
+            window.history.replaceState(welcomeState, '', buildHistoryHash(SCREEN_WELCOME));
+            setScreen(SCREEN_WELCOME);
+            setModalLoanId(null);
+            return;
+          }
+          if (hash === SCREEN_SETTINGS) {
+            const stateObj = buildHistoryState(SCREEN_SETTINGS, null, viewModeRef.current || 'loans');
+            window.history.replaceState(stateObj, '', buildHistoryHash(SCREEN_SETTINGS));
+            setScreen(SCREEN_SETTINGS);
+            setModalLoanId(null);
+            return;
+          }
+          if (hash === SCREEN_DASHBOARD || hash.startsWith('dashboard-')) {
+            const view = hash === 'dashboard-trash' ? 'trash' : hash === 'dashboard-insights' ? 'insights' : 'loans';
+            const stateObj = buildHistoryState(SCREEN_DASHBOARD, view, viewModeRef.current || 'loans');
+            window.history.replaceState(stateObj, '', buildHistoryHash(SCREEN_DASHBOARD, view));
+            setScreen(SCREEN_DASHBOARD);
+            setViewMode(view);
+            if (view === 'trash') setShowLoanForm(false);
+            setModalLoanId(null);
+            return;
           }
         }
       }
@@ -365,7 +463,8 @@ function App() {
       if (!window.location.hash || window.location.hash === '#') {
         setScreen(SCREEN_WELCOME);
         // Use replaceState for initial state, not pushState
-        window.history.replaceState({ screen: SCREEN_WELCOME, viewMode: 'loans' }, '', `#${SCREEN_WELCOME}`);
+        const welcomeState = buildHistoryState(SCREEN_WELCOME, null, 'loans');
+        window.history.replaceState(welcomeState, '', buildHistoryHash(SCREEN_WELCOME, welcomeState.viewMode));
       }
     }
   }, [user]);
@@ -521,7 +620,8 @@ function App() {
   const handleLogout = () => {
     auth.signOut();
     // Clear browser history on logout
-    window.history.replaceState({ screen: SCREEN_WELCOME, viewMode: 'loans' }, '', `#${SCREEN_WELCOME}`);
+    const welcomeState = buildHistoryState(SCREEN_WELCOME, null, 'loans');
+    window.history.replaceState(welcomeState, '', buildHistoryHash(SCREEN_WELCOME, welcomeState.viewMode));
   };
 
   if (loading) {
@@ -602,11 +702,14 @@ function App() {
     <>
       <Toaster position="top-center" />
       <div className="screen dashboard-screen">
+        {viewMode === 'loans' && (
         <header className="dashboard-topbar">
+          {viewMode === 'loans' && (
           <div className="dashboard-topbar__brand">
             <span className="dashboard-topbar__mark">LM</span>
             <span className="dashboard-topbar__title">Loan Manager</span>
           </div>
+          )}
           <nav className="dashboard-topbar__nav" aria-label="Primary">
             <button
               type="button"
@@ -632,6 +735,7 @@ function App() {
               Settings
             </button>
           </nav>
+          {viewMode === 'loans' && (
           <div className="dashboard-topbar__actions">
             <button
               type="button"
@@ -656,7 +760,9 @@ function App() {
               <span>Sign out</span>
             </button>
           </div>
+          )}
         </header>
+        )}
 
         <main className="dashboard-content">
           {showLoanForm && viewMode === 'loans' ? (
@@ -684,7 +790,21 @@ function App() {
 
               <LoanForm onClose={() => setShowLoanForm(false)} />
             </section>
-          ) : viewMode === 'loans' && !showLoanForm ? (
+          ) : null}
+
+          {viewMode === 'loans' ? (
+            <LoanList
+              loans={loans}
+              modalLoan={modalLoanId ? loans.find((l) => l.id === modalLoanId) : null}
+              modalView={modalView}
+              initialPaymentType={initialPaymentType}
+              onOpenDetails={(loan) => openLoanModal(loan.id, 'details')}
+              onOpenExtend={(loan) => openLoanModal(loan.id, 'extend')}
+              onOpenEdit={(loan) => openLoanModal(loan.id, 'edit')}
+              onOpenMarkPaid={(loan) => openLoanModal(loan.id, 'markPaid', 'full')}
+              onCloseModal={closeLoanModalViaBack}
+            />
+          ) : viewMode === 'insights' ? (
             <section className="panel insight-panel">
               <div className="panel__header">
                 <div className="panel__icon">
@@ -750,10 +870,6 @@ function App() {
                 </article>
               </div>
             </section>
-          ) : null}
-
-          {viewMode === 'loans' ? (
-            <LoanList loans={loans} />
           ) : (
             <Trash />
           )}
@@ -765,22 +881,16 @@ function App() {
             className={`mobile-dock__item${viewMode === 'loans' ? ' mobile-dock__item--active' : ''}`}
             onClick={() => handleViewModeChange('loans')}
           >
-            <FaChartPie aria-hidden />
+            <FaWallet aria-hidden />
             <span>Portfolio</span>
           </button>
           <button
             type="button"
-            className={`mobile-dock__item${showLoanForm ? ' mobile-dock__item--active' : ''}`}
-            onClick={() => {
-              if (showLoanForm) {
-                setShowLoanForm(false);
-              } else {
-                openLoanForm();
-              }
-            }}
+            className={`mobile-dock__item${viewMode === 'insights' ? ' mobile-dock__item--active' : ''}`}
+            onClick={() => handleViewModeChange('insights')}
           >
-            <FaPlus aria-hidden />
-            <span>{showLoanForm ? 'Close form' : 'New loan'}</span>
+            <FaChartPie aria-hidden />
+            <span>Insights</span>
           </button>
           <button
             type="button"
