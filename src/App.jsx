@@ -910,15 +910,6 @@ function App() {
                 {lateCount ? 'Needs follow-up' : 'All timelines look healthy'}
               </p>
             </article>
-            <article className="summary-card">
-              <span className="summary-card__label">Currencies</span>
-              <p className="summary-card__value">{currencyCount}</p>
-              <p className="summary-card__meta">
-                {topCurrency
-                  ? `${formatCurrency(topCurrency.remaining, topCurrency.currency, currencyLocale)} open`
-                  : `Default ${defaultCurrency}`}
-              </p>
-            </article>
           </section>
         )}
 
