@@ -31,7 +31,6 @@
 .screen > * {
   position: relative;
   z-index: 1;
-  width: 100%;
 }
 
 .dashboard-screen {
@@ -1796,7 +1795,8 @@
 }
 
 .settings-screen {
-  width: min(1220px, 100%);
+  width: min(1400px, 100%);
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: clamp(1.4rem, 2.4vw, 2rem);
@@ -1810,7 +1810,7 @@
 
 @media (min-width: 980px) {
   .settings-header {
-    grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+    grid-template-columns: minmax(0, 1.2fr) minmax(320px, 390px);
   }
 }
 
@@ -1839,6 +1839,8 @@
 .settings-header__summary {
   display: grid;
   gap: 0.35rem;
+  width: min(100%, 390px);
+  justify-self: end;
   padding: 1.1rem 1.2rem;
   border-radius: 24px;
   border: 1px solid color-mix(in srgb, var(--color-border-strong) 76%, white 24%);
@@ -1879,7 +1881,7 @@
 
 @media (min-width: 1080px) {
   .settings-section {
-    grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+    grid-template-columns: minmax(340px, 420px) minmax(720px, 1fr);
     align-items: start;
   }
 }
@@ -1899,6 +1901,10 @@
   .settings-card--appearance {
     position: sticky;
     top: 1rem;
+  }
+
+  .settings-card--defaults {
+    min-height: 100%;
   }
 }
 
