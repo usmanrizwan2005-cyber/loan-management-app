@@ -216,18 +216,32 @@ function SettingsScreen({
   const currencyOptions = popularCodes.includes(defaultCurrency)
     ? popularCodes
     : [defaultCurrency, ...popularCodes];
+  const currentPalette = PALETTE_CHOICES.find((option) => option.key === themePalette) || PALETTE_CHOICES[0];
+  const currentLocale = LOCALE_OPTIONS.find((option) => option.value === currencyLocale);
 
   return (
     <div className="screen settings-screen">
       <header className="settings-header">
-        <button type="button" className="button button--ghost" onClick={onBack}>
-          Back
-        </button>
-        <h1 className="settings-title">Preferences</h1>
+        <div className="settings-header__main">
+          <button type="button" className="button button--ghost settings-header__back" onClick={onBack}>
+            Back
+          </button>
+          <div className="settings-header__copy">
+            <span className="settings-card__eyebrow">Workspace preferences</span>
+            <h1 className="settings-title">Preferences</h1>
+            <p>Adjust the visual style and default loan behavior without affecting your saved records.</p>
+          </div>
+        </div>
+
+        <div className="settings-header__summary">
+          <span className="settings-header__summary-label">Current workspace</span>
+          <strong>{currentPalette.label} theme in {dark ? 'dark' : 'light'} mode</strong>
+          <span>{defaultCurrency} - {currentLocale?.label || currencyLocale}</span>
+        </div>
       </header>
 
       <section className="settings-section">
-        <div className="settings-card">
+        <div className="settings-card settings-card--appearance">
           <header className="settings-card__header">
             <span className="settings-card__eyebrow">Appearance</span>
             <h2>Workspace theme</h2>
@@ -236,14 +250,20 @@ function SettingsScreen({
 
           <div className="settings-card__content">
             <div className="settings-switch">
-              <span>Dark mode</span>
+              <div className="settings-switch__copy">
+                <span>Dark mode</span>
+                <small>Use a lower-glare layout for evening work and dim rooms.</small>
+              </div>
               <button type="button" className="button button--surface" onClick={onToggleDark}>
                 {dark ? 'Turn off' : 'Turn on'}
               </button>
             </div>
 
             <div className="settings-palette">
-              <span>Color palette</span>
+              <div className="settings-palette__header">
+                <span>Color palette</span>
+                <p>Choose the accent system used for buttons, cards, and key highlights.</p>
+              </div>
               <div className="settings-palette__grid">
                 {PALETTE_CHOICES.map((option) => (
                   <button
@@ -252,6 +272,13 @@ function SettingsScreen({
                     onClick={() => onSelectPalette(option.key)}
                     className={`settings-palette__option${themePalette === option.key ? ' settings-palette__option--active' : ''}`}
                   >
+                    <span
+                      className="settings-palette__swatch"
+                      style={{
+                        '--swatch-primary': PALETTES[option.key]['--color-primary'],
+                        '--swatch-accent': PALETTES[option.key]['--color-accent'],
+                      }}
+                    />
                     <span>{option.label}</span>
                   </button>
                 ))}
@@ -260,7 +287,7 @@ function SettingsScreen({
           </div>
         </div>
 
-        <div className="settings-card">
+        <div className="settings-card settings-card--defaults">
           <header className="settings-card__header">
             <span className="settings-card__eyebrow">Defaults</span>
             <h2>Portfolio preferences</h2>
@@ -313,8 +340,11 @@ function SettingsScreen({
               </select>
             </label>
 
-            <div className="settings-switch">
-              <span>Current defaults</span>
+            <div className="settings-switch settings-switch--summary">
+              <div className="settings-switch__copy">
+                <span>Current defaults</span>
+                <small>New loans will start with these display settings.</small>
+              </div>
               <strong>{defaultCurrency} - {currencyLocale}</strong>
             </div>
           </div>
