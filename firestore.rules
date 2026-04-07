@@ -10,8 +10,13 @@ service cloud.firestore {
       // A user can CREATE a new loan document if they are logged in and are the owner.
       allow create: if request.auth != null && request.resource.data.ownerUid == request.auth.uid;
 
-      // A user can UPDATE or DELETE a loan document if they are the owner.
-      allow update, delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+      // A user can UPDATE a loan document if they are the owner and keep ownership unchanged.
+      allow update: if request.auth != null
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid;
+
+      // A user can DELETE a loan document if they are the owner.
+      allow delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
     }
   }
 }

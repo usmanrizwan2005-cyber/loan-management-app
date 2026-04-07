@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { collection, query, where, onSnapshot, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { Toaster } from 'react-hot-toast';
 import {
   FaArrowRight,
@@ -15,8 +15,7 @@ import {
   FaTimes,
 } from 'react-icons/fa';
 import { auth, db } from './firebase';
-import { toJSDate, formatCurrency, formatDate } from './utils/helpers';
-import { currencies } from './utils/currencies';
+import { toJSDate, formatCurrency, getLoanComputedState } from './utils/helpers';
 import Login from './components/Login.jsx';
 import LoanForm from './components/LoanForm';
 import LoanList from './components/LoanList';
@@ -30,7 +29,7 @@ const SCREEN_SETTINGS = 'settings';
 const VIEW_MODES = [
   { key: 'loans', label: 'Portfolio' },
   { key: 'insights', label: 'Insights' },
-  { key: 'trash', label: 'Trash' },
+  { key: 'trash', label: 'Archive' },
 ];
 
 const LOCALE_OPTIONS = [
@@ -38,6 +37,8 @@ const LOCALE_OPTIONS = [
   { value: 'en-GB', label: 'English (United Kingdom)' },
   { value: 'ur-PK', label: 'Urdu (Pakistan)' },
 ];
+
+const ITEMS_PER_PAGE_OPTIONS = [6, 9, 12, 18, 24];
 
 const PALETTE_CHOICES = [
   { key: 'custom', label: 'Aurora' },
@@ -259,6 +260,94 @@ function SettingsScreen({
           </div>
         </div>
 
+        <div className="settings-card">
+          <header className="settings-card__header">
+            <span className="settings-card__eyebrow">Defaults</span>
+            <h2>Portfolio preferences</h2>
+            <p>Control how the loan list is presented and which defaults new records should inherit.</p>
+          </header>
+
+          <div className="settings-card__content settings-card__grid">
+            <label className="settings-field">
+              <span>Loans per page</span>
+              <select
+                className="input"
+                value={itemsPerPage}
+                onChange={(event) => onItemsPerPageChange(Number(event.target.value))}
+              >
+                {ITEMS_PER_PAGE_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option} loans
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="settings-field">
+              <span>Preferred currency</span>
+              <select
+                className="input"
+                value={defaultCurrency}
+                onChange={(event) => onCurrencyChange(event.target.value)}
+              >
+                {currencyOptions.map((code) => (
+                  <option key={code} value={code}>
+                    {code}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="settings-field">
+              <span>Formatting locale</span>
+              <select
+                className="input"
+                value={currencyLocale}
+                onChange={(event) => onLocaleChange(event.target.value)}
+              >
+                {LOCALE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="settings-switch">
+              <span>Current defaults</span>
+              <strong>{defaultCurrency} - {currencyLocale}</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function LoanFormDialog({ open, onClose, children }) {
+  if (!open) return null;
+
+  return (
+    <div className="loan-form-dialog" role="dialog" aria-modal="true" aria-labelledby="loan-form-dialog-title">
+      <button
+        type="button"
+        className="loan-form-dialog__backdrop"
+        aria-label="Close add loan form"
+        onClick={onClose}
+      />
+      <section className="loan-form-dialog__panel">
+        <header className="loan-form-dialog__header">
+          <div>
+            <span className="panel__eyebrow">Quick capture</span>
+            <h2 id="loan-form-dialog-title">Add a new loan</h2>
+            <p>Capture the details here without losing your place in the dashboard.</p>
+          </div>
+          <button type="button" className="button button--ghost button--compact" onClick={onClose}>
+            <FaTimes aria-hidden />
+            <span>Close</span>
+          </button>
+        </header>
+        <div className="loan-form-dialog__body">{children}</div>
       </section>
     </div>
   );
@@ -272,7 +361,10 @@ function App() {
   const [showLoanForm, setShowLoanForm] = useState(false);
   const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark');
   const [themePalette, setThemePalette] = useState(() => localStorage.getItem('themePalette') || 'custom');
-  const [itemsPerPage, setItemsPerPage] = useState(() => Number(localStorage.getItem('itemsPerPage') || 10));
+  const [itemsPerPage, setItemsPerPage] = useState(() => {
+    const stored = Number(localStorage.getItem('itemsPerPage') || 12);
+    return ITEMS_PER_PAGE_OPTIONS.includes(stored) ? stored : 12;
+  });
   const [defaultCurrency, setDefaultCurrency] = useState(() => localStorage.getItem('preferredCurrency') || 'PKR');
   const [currencyLocale, setCurrencyLocale] = useState(() => localStorage.getItem('currencyLocale') || 'en-US');
   // Modal state lifted to App for history-aware back behavior
@@ -372,8 +464,8 @@ function App() {
   }, [user]);
 
   const openLoanForm = () => {
-    if (viewMode !== 'loans') {
-      setViewMode('loans');
+    if (viewModeRef.current !== 'loans') {
+      handleViewModeChange('loans');
     }
     setShowLoanForm(true);
   };
@@ -506,6 +598,25 @@ function App() {
   }, [currencyLocale]);
 
   useEffect(() => {
+    if (!showLoanForm) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setShowLoanForm(false);
+      }
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showLoanForm]);
+
+  useEffect(() => {
     if (!user) {
       setLoans([]);
       return undefined;
@@ -535,87 +646,75 @@ function App() {
     return () => unsubscribe();
   }, [user]);
 
-  useEffect(() => {
-    const checkAndUpdateLateLoans = async () => {
-      if (!user) return;
-      const lateLoansQuery = query(
-        collection(db, 'loans'),
-        where('ownerUid', '==', user.uid),
-        where('status', '==', 'pending'),
-        where('dueDate', '<', new Date()),
-        where('deletedAt', '==', null)
-      );
-      const snapshot = await getDocs(lateLoansQuery);
-      if (snapshot.empty) return;
-      const batch = writeBatch(db);
-      snapshot.forEach((docSnap) => {
-        batch.update(docSnap.ref, { status: 'late' });
-      });
-      await batch.commit();
+  const portfolio = useMemo(() => {
+    const currencyMap = new Map();
+    let settledCount = 0;
+    let pendingCount = 0;
+    let lateCount = 0;
+    let dueSoonCount = 0;
+
+    loans.forEach((loan) => {
+      const computed = getLoanComputedState(loan);
+      const currency = loan.currency || defaultCurrency || 'USD';
+      const existingCurrency = currencyMap.get(currency) || {
+        currency,
+        count: 0,
+        settledCount: 0,
+        total: 0,
+        paid: 0,
+        remaining: 0,
+      };
+
+      existingCurrency.count += 1;
+      existingCurrency.total += Number(loan.amount || 0);
+      existingCurrency.paid += computed.totalPaid;
+      existingCurrency.remaining += computed.remaining;
+
+      if (computed.isEffectivelyPaid) {
+        settledCount += 1;
+        existingCurrency.settledCount += 1;
+      } else {
+        pendingCount += 1;
+      }
+
+      if (!computed.isEffectivelyPaid && computed.status === 'late') {
+        lateCount += 1;
+      } else if (computed.isDueSoon) {
+        dueSoonCount += 1;
+      }
+
+      currencyMap.set(currency, existingCurrency);
+    });
+
+    const currencyBreakdown = Array.from(currencyMap.values()).sort((left, right) => {
+      if (right.remaining !== left.remaining) return right.remaining - left.remaining;
+      if (right.total !== left.total) return right.total - left.total;
+      return left.currency.localeCompare(right.currency);
+    });
+
+    return {
+      totalLoans: loans.length,
+      settledCount,
+      pendingCount,
+      lateCount,
+      dueSoonCount,
+      currencyBreakdown,
     };
+  }, [loans, defaultCurrency]);
 
-    checkAndUpdateLateLoans();
-  }, [user]);
-
-  const totals = useMemo(() => {
-    return loans.reduce(
-      (accumulator, loan) => {
-        const amount = Number(loan.amount || 0);
-        const paid = loan.repaidAt
-          ? amount
-          : Math.min(
-              (Array.isArray(loan.paymentHistory) ? loan.paymentHistory : [])
-                .filter((payment) => payment?.type === 'partial' || payment?.type === 'adjustment')
-                .reduce((sum, payment) => sum + Number(payment.amount || 0), 0),
-              amount
-            );
-        const remaining = Math.max(amount - paid, 0);
-
-        accumulator.total += amount;
-        accumulator.paid += paid;
-        accumulator.remaining += remaining;
-
-        return accumulator;
-      },
-      { total: 0, paid: 0, remaining: 0 }
-    );
-  }, [loans]);
-
-  const { lateCount, dueSoonCount } = useMemo(() => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const upcomingThreshold = new Date(today);
-    upcomingThreshold.setDate(upcomingThreshold.getDate() + 7);
-
-    return loans.reduce(
-      (accumulator, loan) => {
-        const dueDate = toJSDate(loan.dueDate);
-        const isSettled = loan.repaidAt || loan.status === 'paid';
-        if (!dueDate || isSettled) {
-          return accumulator;
-        }
-
-        if (dueDate < today || loan.status === 'late') {
-          accumulator.lateCount += 1;
-        } else if (dueDate <= upcomingThreshold) {
-          accumulator.dueSoonCount += 1;
-        }
-
-        return accumulator;
-      },
-      { lateCount: 0, dueSoonCount: 0 }
-    );
-  }, [loans]);
-
-  const repaymentProgress = totals.total
-    ? Math.min(100, Math.round((totals.paid / totals.total) * 100))
+  const activeLoansCount = portfolio.totalLoans;
+  const settledLoansCount = portfolio.settledCount;
+  const pendingLoansCount = portfolio.pendingCount;
+  const lateCount = portfolio.lateCount;
+  const dueSoonCount = portfolio.dueSoonCount;
+  const currencyBreakdown = portfolio.currencyBreakdown;
+  const currencyCount = currencyBreakdown.length;
+  const topCurrency = currencyBreakdown[0] || null;
+  const repaymentProgress = activeLoansCount
+    ? Math.min(100, Math.round((settledLoansCount / activeLoansCount) * 100))
     : 0;
-  const activeLoansCount = loans.length;
-  const averageLoanAmount = useMemo(() => {
-    if (!loans.length) return 0;
-    return totals.total / loans.length;
-  }, [loans, totals.total]);
   const attentionCount = lateCount + dueSoonCount;
+  const dashboardContentClassName = 'dashboard-content dashboard-content--single';
 
   const handleLogout = () => {
     auth.signOut();
@@ -702,40 +801,34 @@ function App() {
     <>
       <Toaster position="top-center" />
       <div className="screen dashboard-screen">
-        {viewMode === 'loans' && (
         <header className="dashboard-topbar">
-          {viewMode === 'loans' && (
           <div className="dashboard-topbar__brand">
             <span className="dashboard-topbar__mark">LM</span>
-            <span className="dashboard-topbar__title">Loan Manager</span>
+            <div className="dashboard-topbar__brand-copy">
+              <span className="dashboard-topbar__title">Loan Manager</span>
+              <span className="dashboard-topbar__subtitle">Mobile workspace</span>
+            </div>
           </div>
-          )}
           <nav className="dashboard-topbar__nav" aria-label="Primary">
+            {VIEW_MODES.map((mode) => (
+              <button
+                key={mode.key}
+                type="button"
+                className={`topbar-tab${viewMode === mode.key ? ' is-active' : ''}`}
+                onClick={() => handleViewModeChange(mode.key)}
+                aria-pressed={viewMode === mode.key}
+              >
+                {mode.label}
+              </button>
+            ))}
             <button
               type="button"
-              className={`topbar-tab${viewMode === 'loans' ? ' is-active' : ''}`}
-              onClick={() => handleViewModeChange('loans')}
-              aria-pressed={viewMode === 'loans'}
-            >
-              Portfolio
-            </button>
-            <button
-              type="button"
-              className={`topbar-tab${viewMode === 'trash' ? ' is-active' : ''}`}
-              onClick={() => handleViewModeChange('trash')}
-              aria-pressed={viewMode === 'trash'}
-            >
-              Archive
-            </button>
-            <button
-              type="button"
-              className="topbar-tab"
+              className={`topbar-tab${screen === SCREEN_SETTINGS ? ' is-active' : ''}`}
               onClick={() => navigate(SCREEN_SETTINGS)}
             >
               Settings
             </button>
           </nav>
-          {viewMode === 'loans' && (
           <div className="dashboard-topbar__actions">
             <button
               type="button"
@@ -749,7 +842,7 @@ function App() {
               }}
             >
               {showLoanForm ? <FaTimes aria-hidden /> : <FaPlus aria-hidden />}
-              <span>{showLoanForm ? 'Close form' : 'New loan'}</span>
+              <span>{showLoanForm ? 'Close form' : 'Add loan'}</span>
             </button>
             <button
               type="button"
@@ -760,44 +853,53 @@ function App() {
               <span>Sign out</span>
             </button>
           </div>
-          )}
         </header>
+
+        {viewMode !== 'trash' && (
+          <section className="dashboard-summary" aria-label="Portfolio summary">
+            <article className="summary-card">
+              <span className="summary-card__label">Active Loans</span>
+              <p className="summary-card__value">{activeLoansCount}</p>
+              <p className="summary-card__meta">
+                {activeLoansCount
+                  ? `${pendingLoansCount} open - ${settledLoansCount} settled`
+                  : 'Add your first loan'}
+              </p>
+            </article>
+            <article className="summary-card">
+              <span className="summary-card__label">Due Soon</span>
+              <p className="summary-card__value">{dueSoonCount}</p>
+              <p className="summary-card__meta">
+                {dueSoonCount ? 'Next 7 days' : 'Nothing due this week'}
+              </p>
+            </article>
+            <article className="summary-card">
+              <span className="summary-card__label">Overdue</span>
+              <p className="summary-card__value">{lateCount}</p>
+              <p className="summary-card__meta">
+                {lateCount ? 'Needs follow-up' : 'All timelines look healthy'}
+              </p>
+            </article>
+            <article className="summary-card">
+              <span className="summary-card__label">Currencies</span>
+              <p className="summary-card__value">{currencyCount}</p>
+              <p className="summary-card__meta">
+                {topCurrency
+                  ? `${formatCurrency(topCurrency.remaining, topCurrency.currency, currencyLocale)} open`
+                  : `Default ${defaultCurrency}`}
+              </p>
+            </article>
+          </section>
         )}
 
-        <main className="dashboard-content">
-          {showLoanForm && viewMode === 'loans' ? (
-            <section className="panel">
-              <div className="panel__header">
-                <div className="panel__icon panel__icon--accent">
-                  <FaPlus aria-hidden />
-                </div>
-                <div>
-                  <span className="panel__eyebrow">Add record</span>
-                  <h2>Create a new loan</h2>
-                  <p>Capture borrower details, amounts, and upcoming repayments.</p>
-                </div>
-              </div>
-
-              <div className="panel__actions">
-                <button
-                  type="button"
-                  className="button button--ghost button--pill"
-                  onClick={() => setShowLoanForm(false)}
-                >
-                  Cancel
-                </button>
-              </div>
-
-              <LoanForm onClose={() => setShowLoanForm(false)} />
-            </section>
-          ) : null}
-
+        <main className={dashboardContentClassName}>
           {viewMode === 'loans' ? (
             <LoanList
               loans={loans}
               modalLoan={modalLoanId ? loans.find((l) => l.id === modalLoanId) : null}
               modalView={modalView}
               initialPaymentType={initialPaymentType}
+              itemsPerPage={itemsPerPage}
               onOpenDetails={(loan) => openLoanModal(loan.id, 'details')}
               onOpenExtend={(loan) => openLoanModal(loan.id, 'extend')}
               onOpenEdit={(loan) => openLoanModal(loan.id, 'edit')}
@@ -811,10 +913,10 @@ function App() {
                   <FaChartPie aria-hidden />
                 </div>
                 <div>
-                  <span className="panel__eyebrow">Performance</span>
-                  <h2>Repayment progress</h2>
+                  <span className="panel__eyebrow">Health</span>
+                  <h2>Portfolio health</h2>
                   <p>
-                    <strong>{repaymentProgress}%</strong> of portfolio repaid
+                    <strong>{repaymentProgress}%</strong> of loans are fully settled
                   </p>
                 </div>
               </div>
@@ -824,8 +926,8 @@ function App() {
                   <div className="progress-bar" style={{ width: `${repaymentProgress}%` }} />
                 </div>
                 <div className="progress-meta">
-                  <span>{repaymentProgress}% collected</span>
-                  <span>{Math.max(0, 100 - repaymentProgress)}% still open</span>
+                  <span>{settledLoansCount} settled</span>
+                  <span>{pendingLoansCount} still open</span>
                 </div>
               </div>
 
@@ -835,11 +937,9 @@ function App() {
                     <FaWallet aria-hidden />
                   </div>
                   <div>
-                    <span className="metric-card__label">Cash repaid</span>
-                    <strong className="metric-card__value">
-                      {formatCurrency(totals.paid, defaultCurrency, currencyLocale)}
-                    </strong>
-                    <p>{totals.paid ? 'Recorded repayments to date' : 'No repayments captured yet'}</p>
+                    <span className="metric-card__label">Open loans</span>
+                    <strong className="metric-card__value">{pendingLoansCount}</strong>
+                    <p>{pendingLoansCount ? 'Loans still waiting for repayment' : 'All loans are settled'}</p>
                   </div>
                 </article>
                 <article className="metric-card metric-card--success">
@@ -847,11 +947,13 @@ function App() {
                     <FaBalanceScale aria-hidden />
                   </div>
                   <div>
-                    <span className="metric-card__label">Average ticket</span>
-                    <strong className="metric-card__value">
-                      {formatCurrency(averageLoanAmount, defaultCurrency, currencyLocale)}
-                    </strong>
-                    <p>{activeLoansCount ? 'Mean size of active portfolio' : 'Create a loan to set the baseline'}</p>
+                    <span className="metric-card__label">Currencies tracked</span>
+                    <strong className="metric-card__value">{currencyCount}</strong>
+                    <p>
+                      {topCurrency
+                        ? `Largest open balance is in ${topCurrency.currency}`
+                        : 'Create a loan to start tracking balances'}
+                    </p>
                   </div>
                 </article>
                 <article className="metric-card metric-card--warning">
@@ -863,17 +965,66 @@ function App() {
                     <strong className="metric-card__value">{attentionCount}</strong>
                     <p>
                       {lateCount || dueSoonCount
-                        ? `${lateCount} late - ${dueSoonCount} due shortly`
+                        ? `${lateCount} overdue - ${dueSoonCount} due soon`
                         : 'All timelines look healthy'}
                     </p>
                   </div>
                 </article>
               </div>
+
+              <section className="insight-panel__currencies">
+                <div className="insight-panel__currencies-header">
+                  <div>
+                    <span className="panel__eyebrow">Breakdown</span>
+                    <h3>By currency</h3>
+                  </div>
+                  <p>Balances stay separate so mixed-currency portfolios remain accurate.</p>
+                </div>
+
+                {currencyBreakdown.length > 0 ? (
+                  <div className="insight-panel__currency-grid">
+                    {currencyBreakdown.map((entry) => (
+                      <article key={entry.currency} className="currency-breakdown-card">
+                        <header className="currency-breakdown-card__header">
+                          <strong>{entry.currency}</strong>
+                          <span>{entry.count} {entry.count === 1 ? 'loan' : 'loans'}</span>
+                        </header>
+                        <p className="currency-breakdown-card__value">
+                          {formatCurrency(entry.remaining, entry.currency, currencyLocale)}
+                        </p>
+                        <p className="currency-breakdown-card__meta">
+                          {entry.settledCount} settled - {entry.count - entry.settledCount} open
+                        </p>
+                        <div className="currency-breakdown-card__stats">
+                          <span>Total {formatCurrency(entry.total, entry.currency, currencyLocale)}</span>
+                          <span>Paid {formatCurrency(entry.paid, entry.currency, currencyLocale)}</span>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="data-panel__empty">
+                    <h3>No balances yet</h3>
+                    <p>Add a loan to see your portfolio split cleanly by currency.</p>
+                  </div>
+                )}
+              </section>
             </section>
           ) : (
             <Trash />
           )}
         </main>
+
+        <LoanFormDialog open={showLoanForm && viewMode === 'loans'} onClose={() => setShowLoanForm(false)}>
+          <LoanForm onClose={() => setShowLoanForm(false)} />
+        </LoanFormDialog>
+
+        {viewMode === 'loans' && !showLoanForm && (
+          <button type="button" className="dashboard-fab" onClick={openLoanForm}>
+            <FaPlus aria-hidden />
+            <span>Add loan</span>
+          </button>
+        )}
 
         <nav className="mobile-dock" aria-label="Primary navigation">
           <button
@@ -898,7 +1049,7 @@ function App() {
             onClick={() => handleViewModeChange('trash')}
           >
             <FaTrashAlt aria-hidden />
-            <span>Trash</span>
+            <span>Archive</span>
           </button>
           <button
             type="button"

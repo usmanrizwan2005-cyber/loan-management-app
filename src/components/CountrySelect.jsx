@@ -26,6 +26,7 @@ export default function CountrySelect({
     if (value) return value;
     return (countries || []).find((country) => country.code === valueCode) || null;
   }, [countries, value, valueCode]);
+  const selectedCode = selected?.code || valueCode || '';
 
   useEffect(() => {
     const handleClick = (event) => {
@@ -87,7 +88,7 @@ export default function CountrySelect({
                 <button
                   type="button"
                   className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
-                    valueCode === country.code
+                    selectedCode === country.code
                       ? 'bg-[var(--color-primary)]/10 text-[var(--color-heading)]'
                       : 'hover:bg-[var(--color-primary)]/5'
                   }`}
@@ -96,7 +97,7 @@ export default function CountrySelect({
                     setOpen(false);
                   }}
                   role="option"
-                  aria-selected={valueCode === country.code}
+                  aria-selected={selectedCode === country.code}
                 >
                   <img
                     src={flagUrl(country.code)}

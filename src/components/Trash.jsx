@@ -65,8 +65,8 @@ export default function Trash() {
       <header className="data-panel__header">
         <div className="data-panel__titles">
           <span className="data-panel__eyebrow">Archive</span>
-          <h2>Trash</h2>
-          <p>Restore items or delete them forever. Nothing disappears until you say so.</p>
+          <h2>Archived loans</h2>
+          <p>Restore loans back to the portfolio or remove them permanently.</p>
         </div>
       </header>
 
@@ -102,8 +102,8 @@ export default function Trash() {
         </ul>
       ) : (
         <div className="data-panel__empty">
-          <h3>Trash is empty</h3>
-          <p>Anything you delete from your portfolio will appear here first.</p>
+          <h3>No archived loans</h3>
+          <p>Deleted loans will appear here until you restore or remove them permanently.</p>
         </div>
       )}
     </section>

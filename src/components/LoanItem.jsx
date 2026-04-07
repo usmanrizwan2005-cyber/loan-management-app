@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import toast from 'react-hot-toast';
-import { formatDate, formatCurrency, calculateLoanPaymentState } from '../utils/helpers';
+import { formatDate, formatCurrency, getLoanComputedState } from '../utils/helpers';
 import {
   FaEdit,
   FaTrashAlt,
@@ -19,28 +19,16 @@ export default function LoanItem({
 
   const [isProcessingTrash, setIsProcessingTrash] = useState(false);
 
-  const getDateOnly = (dateValue) => {
-    const js = dateValue?.toDate ? dateValue.toDate() : new Date(dateValue);
-    return new Date(js.getFullYear(), js.getMonth(), js.getDate());
-  };
-
-  const today = (() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  })();
-
-  const dueDateOnly = getDateOnly(loan.dueDate);
-  const inferredLate = dueDateOnly < today;
-
   const {
     totalPaid,
     remaining,
     isEffectivelyPaid,
     effectivePaidAt,
-    onTimeVsLate,
-  } = calculateLoanPaymentState(loan);
+    status,
+    daysUntilDue,
+  } = getLoanComputedState(loan);
 
-  const isOverdueLate = !isEffectivelyPaid && (loan.status === 'late' || inferredLate);
+  const isOverdueLate = !isEffectivelyPaid && status === 'late';
 
   const moveToTrash = async () => {
     if (isProcessingTrash) return;
@@ -59,31 +47,33 @@ export default function LoanItem({
 
   const statusLabel = (() => {
     if (isEffectivelyPaid) {
-      return onTimeVsLate ? onTimeVsLate.replace('-', ' ') : 'Paid';
+      return status === 'late' ? 'Paid late' : status === 'on-time' ? 'Paid on time' : 'Paid';
     }
-    if (loan.status === 'pending' && inferredLate) return 'Late';
-    return loan.status.replace('-', ' ');
+    if (isOverdueLate) return 'Late';
+    return 'Pending';
   })();
 
   const amountValue = Number(loan.amount || 0);
   const amountLabel = formatCurrency(loan.amount, loan.currency);
   const remainingLabel = formatCurrency(remaining, loan.currency);
   const repaymentPercent = amountValue > 0 ? Math.min(100, Math.round((totalPaid / amountValue) * 100)) : 0;
-  const daysUntilDue = Math.ceil((dueDateOnly - today) / (1000 * 60 * 60 * 24));
   const dueDateLabel = formatDate(loan.dueDate);
+  const takenDateLabel = formatDate(loan.takenAt);
 
   let timelineDescriptor;
   if (isEffectivelyPaid) {
     timelineDescriptor = effectivePaidAt ? `Settled on ${formatDate(effectivePaidAt)}` : 'Marked as paid';
-  } else if (isOverdueLate) {
+  } else if (isOverdueLate && typeof daysUntilDue === 'number') {
     const daysOverdue = Math.abs(Math.min(daysUntilDue, 0));
     timelineDescriptor = daysOverdue ? `${daysOverdue} day${daysOverdue === 1 ? '' : 's'} overdue` : 'Overdue';
   } else if (daysUntilDue === 0) {
     timelineDescriptor = 'Due today';
   } else if (daysUntilDue === 1) {
     timelineDescriptor = 'Due tomorrow';
-  } else {
+  } else if (typeof daysUntilDue === 'number' && daysUntilDue > 1) {
     timelineDescriptor = `Due in ${daysUntilDue} days`;
+  } else {
+    timelineDescriptor = 'Due date not set';
   }
 
   return (
@@ -91,35 +81,55 @@ export default function LoanItem({
       <header className="loan-card__header">
         <div className="loan-card__identity">
           <div className="loan-card__avatar">{loan.borrowerName?.[0]?.toUpperCase() || '?'}</div>
-          <div>
-            <h3 className="loan-card__name">{loan.borrowerName}</h3>
-            <p className="loan-card__subtitle">Taken {formatDate(loan.takenAt)}</p>
+          <div className="loan-card__identity-copy">
+            <div className="loan-card__name-row">
+              <h3 className="loan-card__name">{loan.borrowerName}</h3>
+              <span
+                className={`loan-card__badge ${
+                  isOverdueLate
+                    ? 'loan-card__badge--late'
+                    : isEffectivelyPaid
+                    ? 'loan-card__badge--paid'
+                    : 'loan-card__badge--pending'
+                }`}
+              >
+                {isOverdueLate ? 'Late' : statusLabel}
+              </span>
+            </div>
+            <p className="loan-card__subtitle">
+              {loan.phone ? loan.phone : `Taken ${takenDateLabel}`}
+            </p>
           </div>
         </div>
-        <span
-          className={`loan-card__badge ${
-            isOverdueLate
-              ? 'loan-card__badge--late'
-              : isEffectivelyPaid
-              ? 'loan-card__badge--paid'
-              : 'loan-card__badge--pending'
-          }`}
-        >
-          {isOverdueLate ? 'Late' : statusLabel}
-        </span>
+        <div className="loan-card__amount-block">
+          <span>Total loan</span>
+          <strong>{amountLabel}</strong>
+        </div>
       </header>
 
       <div className="loan-card__body">
-        <div className="loan-card__amount">
-          <span>Amount</span>
-          <strong>{amountLabel}</strong>
+        <div className="loan-card__meta-grid">
+          <div className="loan-card__meta-item">
+            <span>Outstanding</span>
+            <strong>{remainingLabel}</strong>
+          </div>
+          <div className="loan-card__meta-item">
+            <span>Due</span>
+            <strong>{dueDateLabel}</strong>
+          </div>
+          <div className="loan-card__meta-item">
+            <span>Taken</span>
+            <strong>{takenDateLabel}</strong>
+          </div>
+          <div className="loan-card__meta-item">
+            <span>Progress</span>
+            <strong>{repaymentPercent}% repaid</strong>
+          </div>
         </div>
-
-        {/* Removed Paid/Remaining stat boxes from front of loans */}
 
         <div className="loan-card__timeline">
           <span className="loan-card__timeline-label">{timelineDescriptor}</span>
-          <span className="loan-card__timeline-date">Due {dueDateLabel}</span>
+          <span className="loan-card__timeline-date">{loan.currency} loan record</span>
         </div>
 
         <div className="loan-card__progress">
@@ -137,23 +147,21 @@ export default function LoanItem({
       </div>
 
       <div className="loan-card__actions">
-        <div className="loan-card__actions-row">
-          <button type="button" className="button button--surface" onClick={() => onDetailsClick(loan)}>
-            Details
+        <button type="button" className="button button--surface button--stretch" onClick={() => onDetailsClick(loan)}>
+          View details
+        </button>
+        {!isEffectivelyPaid && (
+          <button type="button" className="button button--surface button--stretch" onClick={() => onExtendClick(loan)}>
+            Extend due date
           </button>
-          {!isEffectivelyPaid && (
-            <button type="button" className="button button--surface" onClick={() => onExtendClick(loan)}>
-              Extend due date
-            </button>
-          )}
-        </div>
+        )}
         {!isEffectivelyPaid && remaining > 0 && (
           <button
             type="button"
             className="button button--primary"
             onClick={() => onMarkPaidClick(loan)}
           >
-            Mark as paid
+            Record payment
           </button>
         )}
       </div>
@@ -182,5 +190,3 @@ export default function LoanItem({
     </li>
   );
 }
-
-

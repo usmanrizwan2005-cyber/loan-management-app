@@ -1,25 +1,106 @@
-// Format date function
-export const formatDate = (timestamp) => {
-  if (!timestamp) return "N/A";
-  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-  return date.toLocaleDateString("en-US", {
+const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const RELEVANT_PAYMENT_TYPES = new Set(["partial", "adjustment", "full"]);
+
+const pad = (value) => String(value).padStart(2, "0");
+
+const resolveLocale = (locale) => {
+  if (locale) return locale;
+  if (typeof window === "undefined") return "en-US";
+  return localStorage.getItem("currencyLocale") || navigator.language || "en-US";
+};
+
+const getDateOnlyParts = (value) => {
+  const match = DATE_ONLY_PATTERN.exec(String(value || "").trim());
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const candidate = new Date(year, month - 1, day);
+  if (
+    Number.isNaN(candidate.getTime()) ||
+    candidate.getFullYear() !== year ||
+    candidate.getMonth() !== month - 1 ||
+    candidate.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return { year, month, day };
+};
+
+const toUtcDayNumber = (value) => {
+  const date = toDayStart(value);
+  if (!date) return null;
+  return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+};
+
+export const isDateOnlyValue = (value) => Boolean(getDateOnlyParts(value));
+
+export const formatDateInputValue = (value) => {
+  if (!value && value !== 0) return "";
+
+  const parts = getDateOnlyParts(value);
+  if (parts) {
+    return `${parts.year}-${pad(parts.month)}-${pad(parts.day)}`;
+  }
+
+  const date = toJSDate(value);
+  if (!date) return "";
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
+
+// Convert Firestore Timestamp | Date | string | number to a JS Date safely.
+// Date-only strings are treated as local calendar days to avoid timezone shifts.
+export const toJSDate = (value) => {
+  if (!value && value !== 0) return null;
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  if (typeof value?.toDate === "function") {
+    const date = value.toDate();
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  const parts = getDateOnlyParts(value);
+  if (parts) {
+    return new Date(parts.year, parts.month - 1, parts.day);
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+export const toDayStart = (value) => {
+  const date = toJSDate(value);
+  if (!date) return null;
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+};
+
+export const getTodayDateValue = () => formatDateInputValue(new Date());
+
+export const getDayDifference = (target, reference = new Date()) => {
+  const targetDay = toUtcDayNumber(target);
+  const referenceDay = toUtcDayNumber(reference);
+  if (targetDay === null || referenceDay === null) return null;
+  return Math.round((targetDay - referenceDay) / MS_PER_DAY);
+};
+
+export const formatDate = (value, locale) => {
+  if (!value) return "N/A";
+  const date = toJSDate(value);
+  if (!date) return "N/A";
+  return date.toLocaleDateString(resolveLocale(locale), {
     year: "numeric",
     month: "short",
     day: "numeric",
   });
 };
 
-// Convert Firestore Timestamp | Date | string | number to a JS Date safely
-export const toJSDate = (value) => {
-  if (!value) return null;
-  if (typeof value?.toDate === "function") {
-    return value.toDate();
-  }
-  const date = new Date(value);
-  return isNaN(date.getTime()) ? null : date;
-};
-
-// Get status color function aligned with app statuses
+// Get status color function aligned with app statuses.
 export const getStatusColor = (status) => {
   const normalized = (status || "").toLowerCase();
   const colors = {
@@ -33,12 +114,9 @@ export const getStatusColor = (status) => {
 
 export const formatCurrency = (amount, currencyCode, locale) => {
   const code = currencyCode || "USD";
-  let resolvedLocale = locale;
-  if (!resolvedLocale && typeof window !== "undefined") {
-    resolvedLocale = localStorage.getItem("currencyLocale") || undefined;
-  }
+  const resolvedLocale = resolveLocale(locale);
   try {
-    const formatted = new Intl.NumberFormat(resolvedLocale || "en-US", {
+    const formatted = new Intl.NumberFormat(resolvedLocale, {
       style: "currency",
       currency: code,
       currencyDisplay: "code",
@@ -50,7 +128,18 @@ export const formatCurrency = (amount, currencyCode, locale) => {
   }
 };
 
-// Calculate totals, remaining, and effective paid status for a loan
+export const sumPaymentHistory = (history) => {
+  const entries = Array.isArray(history) ? history : [];
+  return entries
+    .filter((entry) => entry && RELEVANT_PAYMENT_TYPES.has(entry.type || "partial"))
+    .reduce((sum, entry) => {
+      const amount =
+        typeof entry.amount === "number" ? entry.amount : parseFloat(entry.amount || 0);
+      return sum + (Number.isNaN(amount) ? 0 : amount);
+    }, 0);
+};
+
+// Calculate totals, remaining, and effective paid status for a loan.
 export const calculateLoanPaymentState = (loan) => {
   if (!loan) {
     return {
@@ -68,39 +157,31 @@ export const calculateLoanPaymentState = (loan) => {
       : parseFloat(loan.amount || 0) || 0;
   const history = Array.isArray(loan.paymentHistory) ? loan.paymentHistory : [];
   const relevant = history.filter(
-    (p) => p && (p.type === "partial" || p.type === "adjustment")
+    (entry) => entry && RELEVANT_PAYMENT_TYPES.has(entry.type || "partial")
   );
-  const parseDate = (d) =>
-    typeof d?.toDate === "function" ? d.toDate() : new Date(d);
 
-  const partialsTotal = relevant.reduce((sum, p) => {
-    const amt =
-      typeof p.amount === "number" ? p.amount : parseFloat(p.amount || 0);
-    return sum + (isNaN(amt) ? 0 : amt);
-  }, 0);
-
-  const hasRepaidAt = !!loan.repaidAt;
+  const historyTotal = sumPaymentHistory(relevant);
+  const hasRepaidAt = Boolean(loan.repaidAt);
   const totalPaid = hasRepaidAt
     ? amountNum
-    : Math.min(partialsTotal, amountNum);
+    : Math.min(Math.max(historyTotal, 0), amountNum);
   const remaining = Math.max(amountNum - totalPaid, 0);
 
-  const latestPartialPaidAt = relevant.length
-    ? new Date(Math.max(...relevant.map((p) => parseDate(p.paidAt).getTime())))
+  const paidAtTimes = relevant
+    .map((entry) => toJSDate(entry.paidAt)?.getTime())
+    .filter((time) => typeof time === "number" && !Number.isNaN(time));
+  const latestRelevantPaidAt = paidAtTimes.length
+    ? new Date(Math.max(...paidAtTimes))
     : null;
 
-  const effectivePaidAt = loan.repaidAt || latestPartialPaidAt;
+  const effectivePaidAt = loan.repaidAt || latestRelevantPaidAt;
   const isEffectivelyPaid = hasRepaidAt || remaining === 0;
 
   let onTimeVsLate = null;
-  try {
-    const due = parseDate(loan.dueDate);
-    const paid = effectivePaidAt ? parseDate(effectivePaidAt) : null;
-    if (isEffectivelyPaid && paid && due) {
-      onTimeVsLate = paid <= due ? "on-time" : "late";
-    }
-  } catch (_) {
-    onTimeVsLate = null;
+  const due = toDayStart(loan.dueDate);
+  const paid = toDayStart(effectivePaidAt);
+  if (isEffectivelyPaid && due && paid) {
+    onTimeVsLate = paid.getTime() <= due.getTime() ? "on-time" : "late";
   }
 
   return {
@@ -109,5 +190,34 @@ export const calculateLoanPaymentState = (loan) => {
     isEffectivelyPaid,
     effectivePaidAt,
     onTimeVsLate,
+  };
+};
+
+export const getLoanComputedState = (loan, referenceDate = new Date()) => {
+  const paymentState = calculateLoanPaymentState(loan);
+  const daysUntilDue = getDayDifference(loan?.dueDate, referenceDate);
+  const isOverdue =
+    !paymentState.isEffectivelyPaid &&
+    typeof daysUntilDue === "number" &&
+    daysUntilDue < 0;
+  const isDueSoon =
+    !paymentState.isEffectivelyPaid &&
+    typeof daysUntilDue === "number" &&
+    daysUntilDue >= 0 &&
+    daysUntilDue <= 7;
+
+  let status = "pending";
+  if (paymentState.isEffectivelyPaid) {
+    status = paymentState.onTimeVsLate || "paid";
+  } else if (isOverdue || (!loan?.dueDate && loan?.status === "late")) {
+    status = "late";
+  }
+
+  return {
+    ...paymentState,
+    status,
+    daysUntilDue,
+    isOverdue,
+    isDueSoon,
   };
 };

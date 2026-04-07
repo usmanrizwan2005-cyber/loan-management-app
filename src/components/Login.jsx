@@ -1,15 +1,44 @@
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithPopup, signInWithRedirect } from 'firebase/auth';
 import { auth } from '../firebase';
 import toast from 'react-hot-toast';
+
+const getFriendlyAuthMessage = (error) => {
+  switch (error?.code) {
+    case 'auth/unauthorized-domain':
+      return 'Google sign-in is blocked on this address. Open the app with localhost instead of 127.0.0.1, or add this domain in Firebase Authentication settings.';
+    case 'auth/operation-not-allowed':
+      return 'Google sign-in is not enabled in Firebase yet. Turn on the Google provider in Firebase Authentication.';
+    case 'auth/popup-blocked':
+      return 'Your browser blocked the Google popup. We will retry with a full-page redirect.';
+    case 'auth/popup-closed-by-user':
+      return 'The Google sign-in popup was closed before finishing.';
+    case 'auth/network-request-failed':
+      return 'Network error while contacting Google or Firebase. Check your internet connection and try again.';
+    default:
+      return error?.message || 'Failed to sign in.';
+  }
+};
 
 export default function Login() {
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+
     try {
       await signInWithPopup(auth, provider);
       toast.success('Signed in successfully!');
     } catch (error) {
-      toast.error(`Failed to sign in: ${error.message}`);
+      if (error?.code === 'auth/popup-blocked') {
+        toast((t) => (
+          <span onClick={() => toast.dismiss(t.id)}>
+            {getFriendlyAuthMessage(error)}
+          </span>
+        ), { duration: 4500 });
+        await signInWithRedirect(auth, provider);
+        return;
+      }
+
+      toast.error(getFriendlyAuthMessage(error));
     }
   };
 

@@ -28,6 +28,7 @@ export default function CurrencySelect({
     if (value) return value;
     return (currencies || []).find((currency) => currency.code === valueCode) || null;
   }, [currencies, value, valueCode]);
+  const selectedCode = selected?.code || valueCode || '';
 
   useEffect(() => {
     const handleClick = (event) => {
@@ -73,7 +74,7 @@ export default function CurrencySelect({
                 <button
                   type="button"
                   className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
-                    valueCode === currency.code
+                    selectedCode === currency.code
                       ? 'bg-[var(--color-primary)]/10 text-[var(--color-heading)]'
                       : 'hover:bg-[var(--color-primary)]/5'
                   }`}
@@ -82,7 +83,7 @@ export default function CurrencySelect({
                     setOpen(false);
                   }}
                   role="option"
-                  aria-selected={valueCode === currency.code}
+                  aria-selected={selectedCode === currency.code}
                 >
                   <span className="font-mono text-sm font-semibold">{currency.code}</span>
                   <span className="truncate text-sm text-[var(--color-muted)]">{currency.name}</span>

@@ -13,13 +13,14 @@ import {
 import { usePhoneCountries } from '../utils/usePhoneCountries';
 import CountrySelect from './CountrySelect.jsx';
 import CurrencySelect from './CurrencySelect.jsx';
+import { formatDateInputValue } from '../utils/helpers';
 
 export default function LoanForm({ onClose }) {
   const [borrowerName, setBorrowerName] = useState('');
   const [phone, setPhone] = useState('');
   const [amount, setAmount] = useState('');
   const [dueDate, setDueDate] = useState('');
-  const [takenDate, setTakenDate] = useState(new Date().toISOString().split('T')[0]);
+  const [takenDate, setTakenDate] = useState(formatDateInputValue(new Date()));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { currencies: allCurrencies } = useCurrencies();
   const [currency, setCurrency] = useState(localStorage.getItem('preferredCurrency') || 'PKR');
@@ -60,6 +61,11 @@ export default function LoanForm({ onClose }) {
       return;
     }
 
+    if (dueDate < takenDate) {
+      toast.error('Due date cannot be earlier than the taken date.');
+      return;
+    }
+
     if (phone) {
       const validation = validateInternationalPhone(phoneCountry, phone);
       if (!validation.ok) {
@@ -77,13 +83,13 @@ export default function LoanForm({ onClose }) {
     try {
       setIsSubmitting(true);
       await addDoc(collection(db, 'loans'), {
-        borrowerName,
-        phone,
+        borrowerName: borrowerName.trim(),
+        phone: phone.trim(),
         phoneCountry: phoneCountry?.code || null,
         amount: parseFloat(amount),
         currency,
-        takenAt: new Date(takenDate),
-        dueDate: new Date(dueDate),
+        takenAt: takenDate,
+        dueDate,
         status: 'pending',
         repaidAt: null,
         deletedAt: null,
@@ -96,7 +102,7 @@ export default function LoanForm({ onClose }) {
       setAmount('');
       setDueDate('');
       setPhoneError('');
-      setTakenDate(new Date().toISOString().split('T')[0]);
+      setTakenDate(formatDateInputValue(new Date()));
       if (typeof onClose === 'function') {
         onClose();
       }

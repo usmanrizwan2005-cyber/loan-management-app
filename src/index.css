@@ -426,6 +426,18 @@ strong {
   box-shadow: var(--shadow-soft);
 }
 
+.chip--success {
+  background: rgba(31, 157, 122, 0.14);
+  border-color: rgba(31, 157, 122, 0.22);
+  color: #0f766e;
+}
+
+.chip--warning {
+  background: rgba(214, 146, 26, 0.14);
+  border-color: rgba(214, 146, 26, 0.24);
+  color: #b45309;
+}
+
 .tab-chip {
   display: inline-flex;
   align-items: center;

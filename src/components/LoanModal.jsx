@@ -2,7 +2,14 @@ import { useState, useEffect } from 'react';
 import { doc, updateDoc, arrayUnion, deleteField } from 'firebase/firestore';
 import { db } from '../firebase';
 import toast from 'react-hot-toast';
-import { formatDate, formatCurrency, calculateLoanPaymentState } from '../utils/helpers';
+import {
+  formatDate,
+  formatCurrency,
+  formatDateInputValue,
+  getLoanComputedState,
+  getTodayDateValue,
+  sumPaymentHistory,
+} from '../utils/helpers';
 import { currencies as seedCurrencies } from '../utils/currencies';
 import { useCurrencies } from '../utils/useCurrencies';
 import {
@@ -17,24 +24,35 @@ import CurrencySelect from './CurrencySelect.jsx';
 import { auth } from '../firebase';
 import { FaCalendarAlt, FaCalendarCheck, FaReceipt, FaHistory, FaPhoneAlt } from 'react-icons/fa';
 
-function ModalChrome({ title, subtitle, badge, onClose, children }) {
+function ModalChrome({ title, subtitle, badge, onClose, onBack, showBack, children }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl bg-[var(--color-surface)] shadow-2xl sm:max-w-3xl max-w-full mx-2">
-        <header className="relative bg-gradient-to-br from-[var(--color-primary)]/12 via-transparent to-transparent px-6 py-5 sm:px-8">
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-2">
-              {badge && <span className="tag-pill text-xs">{badge}</span>}
-              <h2 className="text-2xl font-semibold text-[var(--color-heading)]">{title}</h2>
-              {subtitle && <p className="text-sm text-[var(--color-muted)]">{subtitle}</p>}
-            </div>
-            <button type="button" onClick={onClose} className="button button--ghost button--compact">Close</button>
+    <div className="modal-shell" role="dialog" aria-modal="true" aria-labelledby="loan-modal-title">
+      <button type="button" className="modal-shell__backdrop" aria-label="Close modal" onClick={onClose} />
+      <section className="modal-shell__panel">
+        <div className="modal-shell__handle" aria-hidden />
+        <header className="modal-shell__header">
+          <div className="modal-shell__header-actions">
+            {showBack ? (
+              <button type="button" onClick={onBack} className="button button--ghost button--compact">
+                Back
+              </button>
+            ) : (
+              <span className="modal-shell__spacer" aria-hidden />
+            )}
+            <button type="button" onClick={onClose} className="button button--ghost button--compact">
+              Close
+            </button>
+          </div>
+          <div className="modal-shell__header-copy">
+            {badge && <span className="tag-pill">{badge}</span>}
+            <h2 id="loan-modal-title" className="modal-shell__title">{title}</h2>
+            {subtitle && <p className="modal-shell__subtitle">{subtitle}</p>}
           </div>
         </header>
-        <div className="max-h-[70vh] overflow-y-auto px-4 py-4 sm:px-8 sm:py-8 space-y-6">
+        <div className="modal-shell__body">
           {children}
         </div>
-      </div>
+      </section>
     </div>
   );
 }
@@ -43,6 +61,7 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
   const { currencies: allCurrencies } = useCurrencies();
   const { countries } = usePhoneCountries();
   const [currencyFilter, setCurrencyFilter] = useState('');
+  const [activeView, setActiveView] = useState(viewType || 'details');
   const [newDueDate, setNewDueDate] = useState('');
   const [formData, setFormData] = useState({
     borrowerName: '',
@@ -55,7 +74,7 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
   const [isSubmittingExtend, setIsSubmittingExtend] = useState(false);
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
   const [isSubmittingPaid, setIsSubmittingPaid] = useState(false);
-  const [paidAt, setPaidAt] = useState(new Date().toISOString().split('T')[0]);
+  const [paidAt, setPaidAt] = useState(getTodayDateValue());
   const [paymentType, setPaymentType] = useState(initialPaymentType || 'full');
   const [partialAmount, setPartialAmount] = useState('');
   const [paidEditable, setPaidEditable] = useState('');
@@ -64,7 +83,7 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
   const [editPhoneCountry, setEditPhoneCountry] = useState(null);
   const [editCountryFilter, setEditCountryFilter] = useState('');
 
-  const { totalPaid, remaining } = calculateLoanPaymentState(loan || {});
+  const { totalPaid, remaining, isEffectivelyPaid } = getLoanComputedState(loan || {});
 
   useEffect(() => {
     if (loan) {
@@ -73,12 +92,8 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
         phone: loan.phone || '',
         amount: loan.amount || '',
         currency: loan.currency || 'PKR',
-        takenAt: loan.takenAt
-          ? (loan.takenAt.toDate ? loan.takenAt.toDate() : new Date(loan.takenAt)).toISOString().split('T')[0]
-          : '',
-        dueDate: loan.dueDate
-          ? (loan.dueDate.toDate ? loan.dueDate.toDate() : new Date(loan.dueDate)).toISOString().split('T')[0]
-          : '',
+        takenAt: formatDateInputValue(loan.takenAt),
+        dueDate: formatDateInputValue(loan.dueDate),
       });
       setPaidEditable(String(totalPaid || ''));
       setRemainingEditable(String(remaining || ''));
@@ -98,6 +113,27 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
     }
   }, [initialPaymentType]);
 
+  useEffect(() => {
+    setActiveView(viewType || 'details');
+  }, [viewType, loan?.id]);
+
+  useEffect(() => {
+    if (!loan) return;
+    setNewDueDate('');
+    setPartialAmount('');
+    setPaidAt(getTodayDateValue());
+    setPhoneError('');
+  }, [loan?.id, activeView]);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
   if (!loan) return null;
 
   const handleInputChange = (event) => {
@@ -107,63 +143,85 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
   const handleUpdateLoan = async (event) => {
     event.preventDefault();
     if (isSubmittingEdit) return;
+
+    const borrowerName = formData.borrowerName.trim();
+    const phone = formData.phone.trim();
+    const amountNum = parseFloat(formData.amount);
+
+    if (!borrowerName || !formData.takenAt || !formData.dueDate) {
+      toast.error('Please complete all required fields.');
+      return;
+    }
+
+    if (Number.isNaN(amountNum) || amountNum <= 0) {
+      toast.error('Amount must be greater than zero.');
+      return;
+    }
+
+    if (formData.dueDate < formData.takenAt) {
+      toast.error('Due date cannot be earlier than the taken date.');
+      return;
+    }
+
+    if (phone) {
+      const validation = validateInternationalPhone(editPhoneCountry, phone);
+      if (!validation.ok) {
+        setPhoneError(validation.reason || 'Invalid phone number');
+        toast.error('Please enter a valid phone number.');
+        return;
+      }
+    }
+
     const loanRef = doc(db, 'loans', loan.id);
     try {
       setIsSubmittingEdit(true);
-      const amountNum = parseFloat(formData.amount);
       let paidNum = parseFloat(paidEditable);
       if (Number.isNaN(paidNum) || paidNum < 0) paidNum = 0;
       if (paidNum > amountNum) paidNum = amountNum;
       const remainingNum = Math.max(amountNum - paidNum, 0);
 
       const baseFields = {
-        borrowerName: formData.borrowerName,
-        phone: formData.phone || null,
+        borrowerName,
+        phone: phone || null,
         phoneCountry: editPhoneCountry?.code || null,
         amount: amountNum,
         currency: formData.currency,
-        takenAt: new Date(formData.takenAt),
-        dueDate: new Date(formData.dueDate),
+        takenAt: formData.takenAt,
+        dueDate: formData.dueDate,
       };
 
-      const updateFields = { ...baseFields };
+      const existing = Array.isArray(loan.paymentHistory) ? loan.paymentHistory : [];
+      const historyWithoutAdjustments = existing.filter((entry) => entry?.type !== 'adjustment');
+      const recordedPaid = sumPaymentHistory(historyWithoutAdjustments);
+      const adjustmentAmount = Number((paidNum - recordedPaid).toFixed(2));
+      const nextHistory =
+        adjustmentAmount !== 0
+          ? [
+              ...historyWithoutAdjustments,
+              {
+                type: 'adjustment',
+                amount: adjustmentAmount,
+                paidAt: getTodayDateValue(),
+                _id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+              },
+            ]
+          : historyWithoutAdjustments;
+
+      const updateFields = {
+        ...baseFields,
+        paymentHistory: nextHistory,
+      };
 
       if (remainingNum === 0) {
         const repaidDate = loan.repaidAt
-          ? loan.repaidAt.toDate
-            ? loan.repaidAt.toDate()
-            : new Date(loan.repaidAt)
-          : new Date();
-        const wasPaidOnTime = repaidDate <= new Date(formData.dueDate);
+          ? formatDateInputValue(loan.repaidAt) || getTodayDateValue()
+          : getTodayDateValue();
+        const wasPaidOnTime = !formData.dueDate || repaidDate <= formData.dueDate;
         updateFields.status = wasPaidOnTime ? 'on-time' : 'late';
         updateFields.repaidAt = repaidDate;
-        const existing = Array.isArray(loan.paymentHistory) ? loan.paymentHistory : [];
-        updateFields.paymentHistory = [
-          ...existing.filter((entry) => entry?.type !== 'adjustment'),
-          {
-            type: 'adjustment',
-            amount: paidNum,
-            paidAt: repaidDate,
-            _id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-          },
-        ];
-      } else if (paidNum > 0) {
-        updateFields.status = 'pending';
-        updateFields.repaidAt = deleteField();
-        const existing = Array.isArray(loan.paymentHistory) ? loan.paymentHistory : [];
-        updateFields.paymentHistory = [
-          ...existing.filter((entry) => entry?.type !== 'adjustment'),
-          {
-            type: 'adjustment',
-            amount: paidNum,
-            paidAt: new Date(),
-            _id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-          },
-        ];
       } else {
         updateFields.status = 'pending';
         updateFields.repaidAt = deleteField();
-        updateFields.paymentHistory = [];
       }
 
       await updateDoc(loanRef, updateFields);
@@ -184,17 +242,24 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
       return;
     }
 
+    const currentDueDate = formatDateInputValue(loan.dueDate);
+    if (currentDueDate && newDueDate <= currentDueDate) {
+      toast.error('Choose a date later than the current due date.');
+      return;
+    }
+
     const loanRef = doc(db, 'loans', loan.id);
     try {
       setIsSubmittingExtend(true);
       const extensionLog = {
-        extendedFrom: loan.dueDate,
-        extendedTo: new Date(newDueDate),
-        extendedAt: new Date(),
+        extendedFrom: currentDueDate || loan.dueDate,
+        extendedTo: newDueDate,
+        extendedAt: new Date().toISOString(),
       };
       await updateDoc(loanRef, {
-        originalDueDate: loan.originalDueDate || loan.dueDate,
-        dueDate: new Date(newDueDate),
+        originalDueDate: loan.originalDueDate || currentDueDate || loan.dueDate,
+        dueDate: newDueDate,
+        status: 'pending',
         extensionHistory: arrayUnion(extensionLog),
       });
       toast.success('Due date extended.');
@@ -209,13 +274,36 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
   const handleMarkPaid = async (event) => {
     event.preventDefault();
     if (isSubmittingPaid) return;
+    if (!paidAt) {
+      toast.error('Please select a payment date.');
+      return;
+    }
+
     const loanRef = doc(db, 'loans', loan.id);
     try {
       setIsSubmittingPaid(true);
+      const dueDateValue = formatDateInputValue(loan.dueDate);
       if (paymentType === 'full') {
-        const wasPaidOnTime = new Date(paidAt) <= (loan.dueDate?.toDate ? loan.dueDate.toDate() : new Date(loan.dueDate));
+        const wasPaidOnTime = !dueDateValue || paidAt <= dueDateValue;
         const finalStatus = wasPaidOnTime ? 'on-time' : 'late';
-        await updateDoc(loanRef, { status: finalStatus, repaidAt: new Date(paidAt) });
+        const existing = Array.isArray(loan.paymentHistory) ? loan.paymentHistory : [];
+        const nextHistory =
+          remaining > 0
+            ? [
+                ...existing,
+                {
+                  amount: remaining,
+                  paidAt,
+                  type: 'full',
+                  _id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                },
+              ]
+            : existing;
+        await updateDoc(loanRef, {
+          status: finalStatus,
+          repaidAt: paidAt,
+          paymentHistory: nextHistory,
+        });
         toast.success(`Loan marked as paid (${finalStatus}).`);
       } else {
         const amountNum = parseFloat(partialAmount);
@@ -232,16 +320,16 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
         const existing = Array.isArray(loan.paymentHistory) ? loan.paymentHistory : [];
         const newEntry = {
           amount: amountNum,
-          paidAt: new Date(paidAt),
-          type: 'partial',
+          paidAt,
+          type: Math.abs(amountNum - remaining) < 1e-9 ? 'full' : 'partial',
           _id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         };
         const willSettleLoan = Math.abs(amountNum - remaining) < 1e-9;
         const extraFields = {};
         if (willSettleLoan) {
-          const wasPaidOnTime = new Date(paidAt) <= (loan.dueDate?.toDate ? loan.dueDate.toDate() : new Date(loan.dueDate));
+          const wasPaidOnTime = !dueDateValue || paidAt <= dueDateValue;
           extraFields.status = wasPaidOnTime ? 'on-time' : 'late';
-          extraFields.repaidAt = new Date(paidAt);
+          extraFields.repaidAt = paidAt;
         }
         await updateDoc(loanRef, {
           paymentHistory: [...existing, newEntry],
@@ -261,11 +349,11 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
 
   const paymentHistory = Array.isArray(loan.paymentHistory)
     ? [...loan.paymentHistory]
-        .filter((entry) => entry && entry.type === 'partial')
+        .filter((entry) => entry && ['partial', 'full', 'adjustment'].includes(entry.type))
         .sort((a, b) => {
-          const ad = a.paidAt?.toDate ? a.paidAt.toDate() : new Date(a.paidAt);
-          const bd = b.paidAt?.toDate ? b.paidAt.toDate() : new Date(b.paidAt);
-          return bd - ad;
+          const ad = formatDateInputValue(a.paidAt);
+          const bd = formatDateInputValue(b.paidAt);
+          return bd.localeCompare(ad);
         })
     : [];
 
@@ -375,7 +463,16 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
           <ul className="space-y-2 text-sm text-[var(--color-muted)]">
             {paymentHistory.map((entry, index) => (
               <li key={entry._id || `partial-${index}`} className="flex items-center justify-between gap-4">
-                <span>{formatDate(entry.paidAt)}</span>
+                <div className="flex flex-col">
+                  <span>{formatDate(entry.paidAt)}</span>
+                  <span className="text-xs uppercase tracking-[0.12em] text-[var(--color-muted)]">
+                    {entry.type === 'adjustment'
+                      ? 'Balance adjustment'
+                      : entry.type === 'full'
+                      ? 'Final payment'
+                      : 'Partial payment'}
+                  </span>
+                </div>
                 <span className="font-medium text-[var(--color-heading)]">
                   {formatCurrency(entry.amount, loan.currency)}
                 </span>
@@ -384,6 +481,22 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
           </ul>
         </div>
       )}
+
+      <div className="loan-modal__quick-actions">
+        {!isEffectivelyPaid && remaining > 0 && (
+          <button type="button" className="button button--success button--stretch" onClick={() => setActiveView('markPaid')}>
+            Record payment
+          </button>
+        )}
+        {!isEffectivelyPaid && (
+          <button type="button" className="button button--surface button--stretch" onClick={() => setActiveView('extend')}>
+            Extend due date
+          </button>
+        )}
+        <button type="button" className="button button--surface button--stretch" onClick={() => setActiveView('edit')}>
+          Edit loan
+        </button>
+      </div>
     </div>
   );
 
@@ -573,8 +686,8 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
   const renderMarkPaid = () => (
     <form onSubmit={handleMarkPaid} className="space-y-6">
       <div className="flex flex-wrap items-center gap-3 text-sm">
-        <span className="chip chip-success">Paid: {formatCurrency(totalPaid, loan.currency)}</span>
-        <span className="chip chip-warning">Remaining: {formatCurrency(remaining, loan.currency)}</span>
+        <span className="chip chip--success">Paid: {formatCurrency(totalPaid, loan.currency)}</span>
+        <span className="chip chip--warning">Remaining: {formatCurrency(remaining, loan.currency)}</span>
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
@@ -590,7 +703,7 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
         </label>
         <div className="flex flex-col gap-3 text-sm">
           <span className="font-medium text-[var(--color-heading)]">Payment type</span>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <label className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2">
               <input
                 type="radio"
@@ -643,12 +756,18 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
     markPaid: renderMarkPaid(),
   };
 
-  const { title, subtitle, badge } = headerMeta[viewType] || headerMeta.details;
+  const { title, subtitle, badge } = headerMeta[activeView] || headerMeta.details;
 
   return (
-    <ModalChrome title={title} subtitle={subtitle} badge={badge} onClose={onClose}>
-      {contentMap[viewType]}
+    <ModalChrome
+      title={title}
+      subtitle={subtitle}
+      badge={badge}
+      onClose={onClose}
+      onBack={activeView === 'details' ? undefined : () => setActiveView('details')}
+      showBack={activeView !== 'details'}
+    >
+      {contentMap[activeView]}
     </ModalChrome>
   );
 }
-
