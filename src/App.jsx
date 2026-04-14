@@ -454,19 +454,29 @@ function App() {
   };
 
   const openLoanModal = (loanId, viewType, paymentType = 'full') => {
-    const currentView = viewModeRef.current || 'loans';
-    // Push a target state with modal info so Back closes the modal first
-    const baseState = buildHistoryState(SCREEN_DASHBOARD, currentView, currentView);
-    const modalState = { ...baseState, modal: { type: viewType, loanId, initialPaymentType: paymentType } };
-    window.history.pushState(modalState, '', buildHistoryHash(SCREEN_DASHBOARD, baseState.viewMode));
     setModalLoanId(loanId);
     setModalView(viewType);
     setInitialPaymentType(paymentType || 'full');
+
+    const currentView = viewModeRef.current || 'loans';
+    const baseState = buildHistoryState(SCREEN_DASHBOARD, currentView, currentView);
+    const modalState = { ...baseState, modal: { type: viewType, loanId, initialPaymentType: paymentType } };
+
+    try {
+      // History is only for the Back button. The modal opens immediately from React state above.
+      window.history.pushState(modalState, '', buildHistoryHash(SCREEN_DASHBOARD, baseState.viewMode));
+    } catch (error) {
+      console.warn('Unable to push loan modal history state.', error);
+    }
   };
 
   const closeLoanModalViaBack = () => {
-    // Pop the modal state to return to dashboard without modal
-    window.history.back();
+    if (window.history.state?.modal) {
+      window.history.back();
+      return;
+    }
+
+    setModalLoanId(null);
   };
 
   // Initialize from URL hash on mount

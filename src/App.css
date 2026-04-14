@@ -1068,6 +1068,7 @@
   height: 3px;
   background: linear-gradient(90deg, transparent, rgba(47, 68, 255, 0.38), transparent);
   opacity: 0.6;
+  pointer-events: none;
 }
 
 .loan-card__meta-icon {
@@ -1156,6 +1157,9 @@
 .loan-card__actions {
   display: grid;
   gap: 0.75rem;
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
 }
 
 .loan-card__actions-row {
