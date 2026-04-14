@@ -22,7 +22,16 @@ import { usePhoneCountries } from '../utils/usePhoneCountries';
 import CountrySelect from './CountrySelect.jsx';
 import CurrencySelect from './CurrencySelect.jsx';
 import { auth } from '../firebase';
-import { FaCalendarAlt, FaCalendarCheck, FaReceipt, FaHistory, FaPhoneAlt } from 'react-icons/fa';
+import {
+  FaArrowRight,
+  FaCalendarAlt,
+  FaCalendarCheck,
+  FaCheckCircle,
+  FaHistory,
+  FaPhoneAlt,
+  FaReceipt,
+  FaWallet,
+} from 'react-icons/fa';
 
 function ModalChrome({ title, subtitle, badge, onClose, onBack, showBack, children }) {
   return (
@@ -380,109 +389,130 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
     },
   };
 
+  const amountValue = Number(loan.amount || 0);
+  const repaymentPercent = amountValue > 0 ? Math.min(100, Math.round((totalPaid / amountValue) * 100)) : 0;
+  const originalAmountLabel = formatCurrency(loan.amount, loan.currency);
+  const paidLabel = formatCurrency(totalPaid, loan.currency);
+  const remainingLabel = formatCurrency(remaining, loan.currency);
+
   const renderDetails = () => (
-    <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl bg-[var(--color-surface-alt)]/80 p-5 shadow-inner">
-          <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-muted)]">Original amount</p>
-          <p className="mt-2 text-xl font-semibold text-[var(--color-heading)]">
-            {formatCurrency(loan.amount, loan.currency)}
-          </p>
+    <div className="loan-details">
+      <section className="loan-details__hero">
+        <div className="loan-details__hero-copy">
+          <span className="loan-details__kicker">Balance overview</span>
+          <strong>{remainingLabel}</strong>
+          <p>{repaymentPercent}% repaid from {originalAmountLabel}</p>
         </div>
-        <div className="rounded-2xl bg-[var(--color-surface-alt)]/80 p-5 shadow-inner">
-          <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-muted)]">Paid</p>
-          <p className="mt-2 text-xl font-semibold text-green-600 dark:text-green-400">
-            {formatCurrency(totalPaid, loan.currency)}
-          </p>
+        <span className={`loan-details__status${isEffectivelyPaid ? ' loan-details__status--paid' : ''}`}>
+          {isEffectivelyPaid ? <FaCheckCircle aria-hidden /> : <FaWallet aria-hidden />}
+          {isEffectivelyPaid ? 'Settled' : 'Open balance'}
+        </span>
+        <div className="loan-details__hero-progress" aria-hidden>
+          <span style={{ width: `${repaymentPercent}%` }} />
         </div>
-        <div className="rounded-2xl bg-[var(--color-surface-alt)]/80 p-5 shadow-inner">
-          <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-muted)]">Remaining</p>
-          <p className="mt-2 text-xl font-semibold text-amber-600 dark:text-amber-300">
-            {formatCurrency(remaining, loan.currency)}
-          </p>
-        </div>
+      </section>
+
+      <div className="loan-details__stats" aria-label="Loan balance summary">
+        <article className="loan-details__stat loan-details__stat--total">
+          <span className="loan-details__stat-icon"><FaReceipt aria-hidden /></span>
+          <span>Original</span>
+          <strong>{originalAmountLabel}</strong>
+        </article>
+        <article className="loan-details__stat loan-details__stat--paid">
+          <span className="loan-details__stat-icon"><FaCheckCircle aria-hidden /></span>
+          <span>Paid</span>
+          <strong>{paidLabel}</strong>
+        </article>
+        <article className="loan-details__stat loan-details__stat--remaining">
+          <span className="loan-details__stat-icon"><FaWallet aria-hidden /></span>
+          <span>Remaining</span>
+          <strong>{remainingLabel}</strong>
+        </article>
       </div>
 
-      <div className="grid gap-4 text-sm text-[var(--color-muted)] sm:grid-cols-2">
-        <div className="flex items-center gap-3">
-          <FaReceipt className="text-[var(--color-primary)]" />
-          <span>
-            <strong className="text-[var(--color-heading)]">Taken:</strong> {formatDate(loan.takenAt)}
-          </span>
+      <section className="loan-details__info-panel" aria-label="Loan timeline">
+        <div className="loan-details__info-row">
+          <span className="loan-details__info-icon"><FaReceipt aria-hidden /></span>
+          <div>
+            <span>Taken</span>
+            <strong>{formatDate(loan.takenAt)}</strong>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <FaCalendarAlt className="text-[var(--color-primary)]" />
-          <span>
-            <strong className="text-[var(--color-heading)]">Current due date:</strong> {formatDate(loan.dueDate)}
-          </span>
+        <div className="loan-details__info-row">
+          <span className="loan-details__info-icon"><FaCalendarAlt aria-hidden /></span>
+          <div>
+            <span>Current due date</span>
+            <strong>{formatDate(loan.dueDate)}</strong>
+          </div>
         </div>
         {loan.originalDueDate && (
-          <div className="flex items-center gap-3">
-            <FaCalendarAlt className="text-[var(--color-muted)]" />
-            <span>
-              <strong className="text-[var(--color-heading)]">Original due date:</strong> {formatDate(loan.originalDueDate)}
-            </span>
+          <div className="loan-details__info-row">
+            <span className="loan-details__info-icon"><FaHistory aria-hidden /></span>
+            <div>
+              <span>Original due date</span>
+              <strong>{formatDate(loan.originalDueDate)}</strong>
+            </div>
           </div>
         )}
         {loan.repaidAt && (
-          <div className="flex items-center gap-3">
-            <FaCalendarCheck className="text-green-500" />
-            <span>
-              <strong className="text-[var(--color-heading)]">Paid in full:</strong> {formatDate(loan.repaidAt)}
-            </span>
+          <div className="loan-details__info-row loan-details__info-row--success">
+            <span className="loan-details__info-icon"><FaCalendarCheck aria-hidden /></span>
+            <div>
+              <span>Paid in full</span>
+              <strong>{formatDate(loan.repaidAt)}</strong>
+            </div>
           </div>
         )}
         {loan.phone && (
-          <div className="flex items-center gap-3">
-            <FaPhoneAlt className="text-[var(--color-primary)]" />
-            <span>{loan.phone}</span>
+          <div className="loan-details__info-row">
+            <span className="loan-details__info-icon"><FaPhoneAlt aria-hidden /></span>
+            <div>
+              <span>Phone</span>
+              <strong>{loan.phone}</strong>
+            </div>
           </div>
         )}
-      </div>
+      </section>
 
       {loan.extensionHistory?.length > 0 && (
-        <div className="space-y-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-alt)]/60 p-5">
-          <h3 className="flex items-center gap-2 text-sm font-semibold text-[var(--color-heading)]">
-            <FaHistory /> Extension history
-          </h3>
-          <ul className="space-y-2 text-sm text-[var(--color-muted)]">
+        <section className="loan-details__history">
+          <h3><FaHistory aria-hidden /> Extension history</h3>
+          <ul>
             {loan.extensionHistory.map((extension, index) => (
               <li key={`${extension.extendedAt?.seconds || index}-${index}`}>
-                {formatDate(extension.extendedFrom)} {'->'} {formatDate(extension.extendedTo)}
+                <span>{formatDate(extension.extendedFrom)}</span>
+                <FaArrowRight aria-hidden />
+                <strong>{formatDate(extension.extendedTo)}</strong>
               </li>
             ))}
           </ul>
-        </div>
+        </section>
       )}
 
       {paymentHistory.length > 0 && (
-        <div className="space-y-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-alt)]/60 p-5">
-          <h3 className="flex items-center gap-2 text-sm font-semibold text-[var(--color-heading)]">
-            <FaHistory /> Payment history
-          </h3>
-          <ul className="space-y-2 text-sm text-[var(--color-muted)]">
+        <section className="loan-details__history loan-details__history--payments">
+          <h3><FaHistory aria-hidden /> Payment history</h3>
+          <ul>
             {paymentHistory.map((entry, index) => (
-              <li key={entry._id || `partial-${index}`} className="flex items-center justify-between gap-4">
-                <div className="flex flex-col">
+              <li key={entry._id || `partial-${index}`}>
+                <div>
                   <span>{formatDate(entry.paidAt)}</span>
-                  <span className="text-xs uppercase tracking-[0.12em] text-[var(--color-muted)]">
+                  <small>
                     {entry.type === 'adjustment'
                       ? 'Balance adjustment'
                       : entry.type === 'full'
                       ? 'Final payment'
                       : 'Partial payment'}
-                  </span>
+                  </small>
                 </div>
-                <span className="font-medium text-[var(--color-heading)]">
-                  {formatCurrency(entry.amount, loan.currency)}
-                </span>
+                <strong>{formatCurrency(entry.amount, loan.currency)}</strong>
               </li>
             ))}
           </ul>
-        </div>
+        </section>
       )}
 
-      <div className="loan-modal__quick-actions">
+      <div className="loan-modal__quick-actions loan-modal__quick-actions--premium">
         {!isEffectivelyPaid && remaining > 0 && (
           <button type="button" className="button button--success button--stretch" onClick={() => setActiveView('markPaid')}>
             Record payment
