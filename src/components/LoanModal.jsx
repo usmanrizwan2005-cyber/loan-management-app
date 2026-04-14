@@ -33,7 +33,7 @@ import {
   FaWallet,
 } from 'react-icons/fa';
 
-function ModalChrome({ title, subtitle, badge, onClose, onBack, showBack, children }) {
+function ModalChrome({ title, subtitle, badge, onClose, onBack, showBack, footer, children }) {
   return (
     <div className="modal-shell" role="dialog" aria-modal="true" aria-labelledby="loan-modal-title">
       <button type="button" className="modal-shell__backdrop" aria-label="Close modal" onClick={onClose} />
@@ -61,6 +61,7 @@ function ModalChrome({ title, subtitle, badge, onClose, onBack, showBack, childr
         <div className="modal-shell__body">
           {children}
         </div>
+        {footer && <footer className="modal-shell__footer">{footer}</footer>}
       </section>
     </div>
   );
@@ -552,7 +553,7 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
   );
 
   const renderEdit = () => (
-    <form onSubmit={handleUpdateLoan} className="loan-modal__form loan-modal__form--edit">
+    <form id="loan-edit-form" onSubmit={handleUpdateLoan} className="loan-modal__form loan-modal__form--edit">
       <div className="grid gap-5 sm:grid-cols-2">
         <label className="flex flex-col gap-2 text-sm">
           <span className="font-medium text-[var(--color-heading)]">Borrower name</span>
@@ -705,11 +706,6 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
         </label>
       </div>
 
-      <div className="loan-modal__form-actions loan-modal__form-actions--bottom">
-        <button type="submit" disabled={isSubmittingEdit} className="button button--primary button--stretch loan-modal__submit">
-          {isSubmittingEdit ? 'Saving...' : 'Save changes'}
-        </button>
-      </div>
     </form>
   );
 
@@ -787,6 +783,16 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
   };
 
   const { title, subtitle, badge } = headerMeta[activeView] || headerMeta.details;
+  const footer = activeView === 'edit' ? (
+    <button
+      type="submit"
+      form="loan-edit-form"
+      disabled={isSubmittingEdit}
+      className="button button--primary button--stretch loan-modal__submit"
+    >
+      {isSubmittingEdit ? 'Saving...' : 'Save changes'}
+    </button>
+  ) : null;
 
   return (
     <ModalChrome
@@ -796,6 +802,7 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
       onClose={onClose}
       onBack={activeView === 'details' ? undefined : () => setActiveView('details')}
       showBack={activeView !== 'details'}
+      footer={footer}
     >
       {contentMap[activeView]}
     </ModalChrome>
