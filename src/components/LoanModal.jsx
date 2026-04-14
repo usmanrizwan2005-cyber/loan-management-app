@@ -513,21 +513,18 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
         </section>
       )}
 
-      <div className="loan-modal__quick-actions loan-modal__quick-actions--premium">
-        {!isEffectivelyPaid && remaining > 0 && (
-          <button type="button" className="button button--success button--stretch" onClick={() => setActiveView('markPaid')}>
-            Record payment
-          </button>
-        )}
-        {!isEffectivelyPaid && (
+      {!isEffectivelyPaid && (
+        <div className="loan-modal__quick-actions loan-modal__quick-actions--premium">
+          {remaining > 0 && (
+            <button type="button" className="button button--success button--stretch" onClick={() => setActiveView('markPaid')}>
+              Record payment
+            </button>
+          )}
           <button type="button" className="button button--surface button--stretch" onClick={() => setActiveView('extend')}>
             Extend due date
           </button>
-        )}
-        <button type="button" className="button button--surface button--stretch" onClick={() => setActiveView('edit')}>
-          Edit loan
-        </button>
-      </div>
+        </div>
+      )}
     </div>
   );
 
