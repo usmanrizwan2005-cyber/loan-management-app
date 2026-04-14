@@ -1,6 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
 import LoanItem from './LoanItem';
-import LoanModal from './LoanModal';
 import { getLoanComputedState } from '../utils/helpers';
 
 const FILTERS = [
@@ -13,15 +12,11 @@ const FILTERS = [
 
 export default function LoanList({
   loans,
-  modalLoan,
-  modalView,
-  initialPaymentType,
   itemsPerPage = 10,
   onOpenDetails,
   onOpenExtend,
   onOpenEdit,
   onOpenMarkPaid,
-  onCloseModal,
 }) {
   const [activeFilter, setActiveFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
@@ -172,14 +167,6 @@ export default function LoanList({
         </div>
       )}
 
-      {modalLoan && (
-        <LoanModal
-          loan={modalLoan}
-          viewType={modalView}
-          onClose={onCloseModal}
-          initialPaymentType={initialPaymentType}
-        />
-      )}
     </section>
   );
 }

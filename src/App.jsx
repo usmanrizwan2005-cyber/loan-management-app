@@ -19,6 +19,7 @@ import { toJSDate, formatCurrency, getLoanComputedState } from './utils/helpers'
 import Login from './components/Login.jsx';
 import LoanForm from './components/LoanForm';
 import LoanList from './components/LoanList';
+import LoanModal from './components/LoanModal';
 import Trash from './components/Trash.jsx';
 import './App.css';
 
@@ -908,15 +909,11 @@ function App() {
           {viewMode === 'loans' ? (
             <LoanList
               loans={loans}
-              modalLoan={modalLoanId ? loans.find((l) => l.id === modalLoanId) : null}
-              modalView={modalView}
-              initialPaymentType={initialPaymentType}
               itemsPerPage={itemsPerPage}
               onOpenDetails={(loan) => openLoanModal(loan.id, 'details')}
               onOpenExtend={(loan) => openLoanModal(loan.id, 'extend')}
               onOpenEdit={(loan) => openLoanModal(loan.id, 'edit')}
               onOpenMarkPaid={(loan) => openLoanModal(loan.id, 'markPaid', 'full')}
-              onCloseModal={closeLoanModalViaBack}
             />
           ) : viewMode === 'insights' ? (
             <section className="panel insight-panel">
@@ -1030,6 +1027,15 @@ function App() {
         <LoanFormDialog open={showLoanForm && viewMode === 'loans'} onClose={() => setShowLoanForm(false)}>
           <LoanForm onClose={() => setShowLoanForm(false)} />
         </LoanFormDialog>
+
+        {modalLoanId && (
+          <LoanModal
+            loan={loans.find((loan) => loan.id === modalLoanId) || null}
+            viewType={modalView}
+            onClose={closeLoanModalViaBack}
+            initialPaymentType={initialPaymentType}
+          />
+        )}
 
         <nav className="mobile-dock" aria-label="Primary navigation">
           <button
