@@ -136,6 +136,7 @@
   display: flex;
   justify-content: flex-start;
   width: 100%;
+  margin-top: 0.25rem;
 }
 
 .dashboard-cta {
@@ -206,6 +207,7 @@
 
   .dashboard-cta-row {
     justify-content: flex-start;
+    padding-inline: 0.2rem;
   }
 
   .dashboard-cta {
@@ -2231,7 +2233,7 @@
   }
 
   .dashboard-screen {
-    gap: 0.9rem;
+    gap: 1rem;
   }
 
   .dashboard-topbar {
@@ -2240,6 +2242,11 @@
     padding: 0.9rem 1rem;
     position: static;
     border-radius: 24px;
+  }
+
+  .dashboard-cta-row {
+    margin-top: 0.25rem;
+    padding-inline: 0.08rem;
   }
 
   .dashboard-topbar__brand {
@@ -2344,6 +2351,10 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.28);
   }
 
+  .dashboard-cta-row {
+    margin-top: 0.45rem;
+  }
+
   .dashboard-topbar::after {
     content: '';
     position: absolute;
@@ -2392,13 +2403,13 @@
     isolation: isolate;
     overflow: hidden;
     width: 100%;
-    min-height: 4rem;
+    min-height: 3.85rem;
     border: 1px solid rgba(255, 255, 255, 0.45);
     background:
       linear-gradient(135deg, #07152e 0%, #1155ff 48%, #00a693 100%);
     color: #ffffff;
     box-shadow:
-      0 22px 46px rgba(17, 85, 255, 0.24),
+      0 18px 38px rgba(17, 85, 255, 0.22),
       inset 0 1px 0 rgba(255, 255, 255, 0.32);
   }
 
