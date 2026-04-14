@@ -4,7 +4,11 @@ import { db } from '../firebase';
 import toast from 'react-hot-toast';
 import { formatDate, formatCurrency, getLoanComputedState } from '../utils/helpers';
 import {
+  FaCalendarAlt,
+  FaChartLine,
+  FaClock,
   FaEdit,
+  FaMoneyBillWave,
   FaTrashAlt,
 } from 'react-icons/fa';
 
@@ -77,7 +81,7 @@ export default function LoanItem({
   }
 
   return (
-    <li className="loan-card">
+    <li className={`loan-card loan-card--${isOverdueLate ? 'late' : isEffectivelyPaid ? 'paid' : 'pending'}`}>
       <header className="loan-card__header">
         <div className="loan-card__identity">
           <div className="loan-card__avatar">{loan.borrowerName?.[0]?.toUpperCase() || '?'}</div>
@@ -109,21 +113,41 @@ export default function LoanItem({
 
       <div className="loan-card__body">
         <div className="loan-card__meta-grid">
-          <div className="loan-card__meta-item">
-            <span>Outstanding</span>
-            <strong>{remainingLabel}</strong>
+          <div className="loan-card__meta-item loan-card__meta-item--money">
+            <span className="loan-card__meta-icon">
+              <FaMoneyBillWave aria-hidden />
+            </span>
+            <div className="loan-card__meta-copy">
+              <span>Outstanding</span>
+              <strong>{remainingLabel}</strong>
+            </div>
           </div>
-          <div className="loan-card__meta-item">
-            <span>Due</span>
-            <strong>{dueDateLabel}</strong>
+          <div className="loan-card__meta-item loan-card__meta-item--due">
+            <span className="loan-card__meta-icon">
+              <FaCalendarAlt aria-hidden />
+            </span>
+            <div className="loan-card__meta-copy">
+              <span>Due</span>
+              <strong>{dueDateLabel}</strong>
+            </div>
           </div>
-          <div className="loan-card__meta-item">
-            <span>Taken</span>
-            <strong>{takenDateLabel}</strong>
+          <div className="loan-card__meta-item loan-card__meta-item--taken">
+            <span className="loan-card__meta-icon">
+              <FaClock aria-hidden />
+            </span>
+            <div className="loan-card__meta-copy">
+              <span>Taken</span>
+              <strong>{takenDateLabel}</strong>
+            </div>
           </div>
-          <div className="loan-card__meta-item">
-            <span>Progress</span>
-            <strong>{repaymentPercent}% repaid</strong>
+          <div className="loan-card__meta-item loan-card__meta-item--progress">
+            <span className="loan-card__meta-icon">
+              <FaChartLine aria-hidden />
+            </span>
+            <div className="loan-card__meta-copy">
+              <span>Progress</span>
+              <strong>{repaymentPercent}% repaid</strong>
+            </div>
           </div>
         </div>
 
