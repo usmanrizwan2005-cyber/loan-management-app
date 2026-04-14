@@ -1716,6 +1716,38 @@
   box-shadow: 0 16px 32px rgba(8, 25, 56, 0.08);
 }
 
+.loan-modal__form {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.loan-modal__form-actions {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.loan-modal__form-actions--sticky {
+  position: sticky;
+  bottom: -1.25rem;
+  z-index: 6;
+  margin: 0 -0.25rem -0.35rem;
+  padding: 0.85rem 0.25rem calc(0.85rem + env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(17, 85, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(244, 248, 255, 0), rgba(244, 248, 255, 0.96) 22%, rgba(244, 248, 255, 0.98) 100%);
+  backdrop-filter: blur(14px);
+}
+
+.loan-modal__submit {
+  min-height: 3.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.48);
+  background: linear-gradient(135deg, #07152e 0%, #1155ff 52%, #00a693 100%);
+  box-shadow:
+    0 18px 38px rgba(17, 85, 255, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  font-size: 1rem;
+}
+
 @media (max-width: 700px) {
   .loan-form-dialog {
     padding: 0;
@@ -1804,6 +1836,21 @@
   .loan-details__info-panel,
   .loan-details__history {
     border-radius: 24px;
+  }
+
+  .loan-modal__form {
+    gap: 1.1rem;
+  }
+
+  .loan-modal__form-actions--sticky {
+    bottom: calc(-1rem - env(safe-area-inset-bottom));
+    margin-inline: -0.15rem;
+    padding-top: 0.8rem;
+  }
+
+  .loan-modal__submit {
+    min-height: 3.85rem;
+    border-radius: 999px;
   }
 }
 
