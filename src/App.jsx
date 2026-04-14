@@ -53,20 +53,20 @@ const PALETTE_CHOICES = [
 
 const PALETTES = {
   custom: {
-    '--color-primary': '#2f44ff',
-    '--color-primary-hover': '#2637db',
-    '--color-primary-active': '#1d2cae',
-    '--color-accent': '#2cb1bc',
-    '--color-info': '#3a8bff',
+    '--color-primary': '#1155ff',
+    '--color-primary-hover': '#0d43cc',
+    '--color-primary-active': '#082f99',
+    '--color-accent': '#00a693',
+    '--color-info': '#0ea5e9',
     '--color-surface': '#ffffff',
     '--color-surface-alt': 'rgba(244, 246, 252, 0.9)',
     '--color-border': 'rgba(15, 23, 42, 0.08)',
     '--color-border-strong': 'rgba(15, 23, 42, 0.14)',
-    '--color-bg': '#f7f8fb',
+    '--color-bg': '#eef5ff',
     '--color-muted': '#667085',
     '--color-text': '#1d2433',
     '--color-heading': '#111827',
-    '--color-page-gradient': 'radial-gradient(circle at 8% 12%, rgba(86, 112, 255, 0.12), transparent 60%), radial-gradient(circle at 92% 10%, rgba(44, 177, 188, 0.12), transparent 55%), linear-gradient(180deg, #f9f9fc 0%, #eef2f9 100%)',
+    '--color-page-gradient': 'radial-gradient(circle at 10% 8%, rgba(17, 85, 255, 0.16), transparent 58%), radial-gradient(circle at 90% 8%, rgba(0, 166, 147, 0.15), transparent 55%), radial-gradient(circle at 20% 90%, rgba(242, 173, 61, 0.12), transparent 50%), linear-gradient(180deg, #f8fbff 0%, #eaf3ff 100%)',
   },
   sky: {
     '--color-primary': '#0ea5e9',
@@ -367,12 +367,16 @@ function LoanFormDialog({ open, onClose, children }) {
       />
       <section className="loan-form-dialog__panel">
         <header className="loan-form-dialog__header">
-          <div>
+          <div className="loan-form-dialog__header-copy">
             <span className="panel__eyebrow">Quick capture</span>
             <h2 id="loan-form-dialog-title">Add a new loan</h2>
             <p>Capture the details here without losing your place in the dashboard.</p>
           </div>
-          <button type="button" className="button button--ghost button--compact" onClick={onClose}>
+          <button
+            type="button"
+            className="button button--ghost button--compact loan-form-dialog__close"
+            onClick={onClose}
+          >
             <FaTimes aria-hidden />
             <span>Close</span>
           </button>
@@ -862,7 +866,20 @@ function App() {
           <div className="dashboard-topbar__actions">
             <button
               type="button"
-              className="button button--surface"
+              className="button button--ghost"
+              onClick={handleLogout}
+            >
+              <FaSignOutAlt aria-hidden />
+              <span>Sign out</span>
+            </button>
+          </div>
+        </header>
+
+        {viewMode === 'loans' && (
+          <div className="dashboard-cta-row">
+            <button
+              type="button"
+              className="button button--surface dashboard-cta"
               onClick={() => {
                 if (showLoanForm) {
                   setShowLoanForm(false);
@@ -874,43 +891,7 @@ function App() {
               {showLoanForm ? <FaTimes aria-hidden /> : <FaPlus aria-hidden />}
               <span>{showLoanForm ? 'Close form' : 'Add loan'}</span>
             </button>
-            <button
-              type="button"
-              className="button button--ghost"
-              onClick={handleLogout}
-            >
-              <FaSignOutAlt aria-hidden />
-              <span>Sign out</span>
-            </button>
           </div>
-        </header>
-
-        {viewMode !== 'trash' && (
-          <section className="dashboard-summary" aria-label="Portfolio summary">
-            <article className="summary-card">
-              <span className="summary-card__label">Active Loans</span>
-              <p className="summary-card__value">{activeLoansCount}</p>
-              <p className="summary-card__meta">
-                {activeLoansCount
-                  ? `${pendingLoansCount} open - ${settledLoansCount} settled`
-                  : 'Add your first loan'}
-              </p>
-            </article>
-            <article className="summary-card">
-              <span className="summary-card__label">Due Soon</span>
-              <p className="summary-card__value">{dueSoonCount}</p>
-              <p className="summary-card__meta">
-                {dueSoonCount ? 'Next 7 days' : 'Nothing due this week'}
-              </p>
-            </article>
-            <article className="summary-card">
-              <span className="summary-card__label">Overdue</span>
-              <p className="summary-card__value">{lateCount}</p>
-              <p className="summary-card__meta">
-                {lateCount ? 'Needs follow-up' : 'All timelines look healthy'}
-              </p>
-            </article>
-          </section>
         )}
 
         <main className={dashboardContentClassName}>
@@ -1039,13 +1020,6 @@ function App() {
         <LoanFormDialog open={showLoanForm && viewMode === 'loans'} onClose={() => setShowLoanForm(false)}>
           <LoanForm onClose={() => setShowLoanForm(false)} />
         </LoanFormDialog>
-
-        {viewMode === 'loans' && !showLoanForm && (
-          <button type="button" className="dashboard-fab" onClick={openLoanForm}>
-            <FaPlus aria-hidden />
-            <span>Add loan</span>
-          </button>
-        )}
 
         <nav className="mobile-dock" aria-label="Primary navigation">
           <button

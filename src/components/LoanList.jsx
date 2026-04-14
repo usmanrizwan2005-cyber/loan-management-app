@@ -42,7 +42,7 @@ export default function LoanList({
       .filter((loan) => {
         const filter = activeFilter.toLowerCase();
         if (filter === 'all') return true;
-        if (filter === 'pending') return loan.computed.status === 'pending';
+        if (filter === 'pending') return !loan.computed.isEffectivelyPaid;
         if (filter === 'late') return loan.computed.status === 'late' && !loan.computed.isEffectivelyPaid;
         if (filter === 'paid') return loan.computed.isEffectivelyPaid;
         if (filter === 'on-time') return loan.computed.isEffectivelyPaid && loan.computed.status === 'on-time';

@@ -5,18 +5,18 @@
 :root {
   --font-sans: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
-  --color-primary: #2f44ff;
-  --color-primary-hover: #2637db;
-  --color-primary-active: #1d2cae;
-  --color-secondary: #2cb1bc;
-  --color-accent: #5f6bff;
-  --color-info: #3a8bff;
+  --color-primary: #1155ff;
+  --color-primary-hover: #0d43cc;
+  --color-primary-active: #082f99;
+  --color-secondary: #00a693;
+  --color-accent: #f2ad3d;
+  --color-info: #0ea5e9;
   --color-success: #1f9d7a;
   --color-warning: #d6921a;
   --color-error: #dc4c4c;
 
-  --color-bg: #f7f8fb;
-  --color-page-gradient: radial-gradient(circle at 8% 12%, rgba(86, 112, 255, 0.12), transparent 60%), radial-gradient(circle at 92% 10%, rgba(44, 177, 188, 0.12), transparent 55%), linear-gradient(180deg, #f9f9fc 0%, #eef2f9 100%);
+  --color-bg: #eef5ff;
+  --color-page-gradient: radial-gradient(circle at 10% 8%, rgba(17, 85, 255, 0.16), transparent 58%), radial-gradient(circle at 90% 8%, rgba(0, 166, 147, 0.15), transparent 55%), radial-gradient(circle at 20% 90%, rgba(242, 173, 61, 0.12), transparent 50%), linear-gradient(180deg, #f8fbff 0%, #eaf3ff 100%);
   --color-surface: rgba(255, 255, 255, 0.98);
   --color-surface-alt: rgba(244, 246, 252, 0.88);
   --color-border: rgba(15, 23, 42, 0.08);
@@ -28,9 +28,9 @@
 
   --shadow-soft: 0 28px 65px rgba(17, 24, 39, 0.08);
   --shadow-card: 0 18px 48px rgba(17, 24, 39, 0.06);
-  --shadow-hover: 0 32px 70px rgba(47, 68, 255, 0.2);
+  --shadow-hover: 0 32px 70px rgba(17, 85, 255, 0.22);
   --shadow-elevated: 0 42px 90px rgba(15, 23, 42, 0.12);
-  --shadow-focus: 0 0 0 4px rgba(47, 68, 255, 0.24);
+  --shadow-focus: 0 0 0 4px rgba(17, 85, 255, 0.24);
 
   --radius-xl: 28px;
   --radius-lg: 22px;
@@ -41,8 +41,8 @@
   --transition-normal: 260ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 420ms cubic-bezier(0.4, 0, 0.2, 1);
 
-  --gradient-primary: linear-gradient(135deg, #2f44ff 0%, #6b7aff 100%);
-  --gradient-primary-soft: linear-gradient(150deg, rgba(47, 68, 255, 0.18) 0%, rgba(107, 122, 255, 0.08) 100%);
+  --gradient-primary: linear-gradient(135deg, #0f3cff 0%, #06b6d4 62%, #14b88f 100%);
+  --gradient-primary-soft: linear-gradient(150deg, rgba(17, 85, 255, 0.18) 0%, rgba(6, 182, 212, 0.1) 100%);
   --gradient-surface: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(252, 253, 255, 0.82) 100%);
   --gradient-muted: linear-gradient(135deg, rgba(102, 112, 133, 0.12) 0%, rgba(102, 112, 133, 0.04) 100%);
 }
