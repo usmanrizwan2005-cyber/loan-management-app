@@ -553,16 +553,6 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
 
   const renderEdit = () => (
     <form onSubmit={handleUpdateLoan} className="loan-modal__form loan-modal__form--edit">
-      <div className="loan-modal__save-banner">
-        <div>
-          <span>Ready to update?</span>
-          <strong>Save your loan changes</strong>
-        </div>
-        <button type="submit" disabled={isSubmittingEdit} className="button button--primary loan-modal__save-banner-button">
-          {isSubmittingEdit ? 'Saving...' : 'Save changes'}
-        </button>
-      </div>
-
       <div className="grid gap-5 sm:grid-cols-2">
         <label className="flex flex-col gap-2 text-sm">
           <span className="font-medium text-[var(--color-heading)]">Borrower name</span>
@@ -715,7 +705,7 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
         </label>
       </div>
 
-      <div className="loan-modal__form-actions loan-modal__form-actions--sticky">
+      <div className="loan-modal__form-actions loan-modal__form-actions--bottom">
         <button type="submit" disabled={isSubmittingEdit} className="button button--primary button--stretch loan-modal__submit">
           {isSubmittingEdit ? 'Saving...' : 'Save changes'}
         </button>
