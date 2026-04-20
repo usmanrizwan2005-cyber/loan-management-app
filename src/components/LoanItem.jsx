@@ -63,6 +63,7 @@ export default function LoanItem({
   const repaymentPercent = amountValue > 0 ? Math.min(100, Math.round((totalPaid / amountValue) * 100)) : 0;
   const dueDateLabel = formatDate(loan.dueDate);
   const takenDateLabel = formatDate(loan.takenAt);
+  const notePreview = String(loan.note || loan.description || '').trim();
 
   let timelineDescriptor;
   if (isEffectivelyPaid) {
@@ -155,6 +156,10 @@ export default function LoanItem({
           <span className="loan-card__timeline-label">{timelineDescriptor}</span>
           <span className="loan-card__timeline-date">{loan.currency} loan record</span>
         </div>
+
+        {notePreview && (
+          <p className="loan-card__note">{notePreview}</p>
+        )}
 
         <div className="loan-card__progress">
           <div className="progress-track">

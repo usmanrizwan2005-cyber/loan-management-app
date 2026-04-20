@@ -1140,6 +1140,17 @@
   color: var(--color-muted);
 }
 
+.loan-card__note {
+  display: -webkit-box;
+  margin: -0.25rem 0 0;
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .loan-card__progress {
   display: grid;
   gap: 0.7rem;
@@ -1196,6 +1207,17 @@
 .loan-form__grid {
   display: grid;
   gap: 1.2rem 1.5rem;
+}
+
+.loan-form__note-field {
+  grid-column: 1 / -1;
+}
+
+.loan-form__textarea,
+.loan-modal__textarea {
+  min-height: 7rem;
+  line-height: 1.5;
+  resize: vertical;
 }
 
 @media (max-width: 640px) {
@@ -1677,6 +1699,19 @@
   color: #111827;
   font-size: 1rem;
   line-height: 1.25;
+  word-break: break-word;
+}
+
+.loan-details__info-row--note {
+  align-items: flex-start;
+}
+
+.loan-details__note {
+  margin: 0.12rem 0 0;
+  color: #111827;
+  font-size: 0.98rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
   word-break: break-word;
 }
 

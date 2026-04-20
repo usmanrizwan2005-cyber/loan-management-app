@@ -24,6 +24,7 @@ import CurrencySelect from './CurrencySelect.jsx';
 import { auth } from '../firebase';
 import {
   FaArrowRight,
+  FaAlignLeft,
   FaCalendarAlt,
   FaCalendarCheck,
   FaCheckCircle,
@@ -80,6 +81,7 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
     currency: 'PKR',
     takenAt: '',
     dueDate: '',
+    note: '',
   });
   const [isSubmittingExtend, setIsSubmittingExtend] = useState(false);
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
@@ -104,6 +106,7 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
         currency: loan.currency || 'PKR',
         takenAt: formatDateInputValue(loan.takenAt),
         dueDate: formatDateInputValue(loan.dueDate),
+        note: loan.note || loan.description || '',
       });
       setPaidEditable(String(totalPaid || ''));
       setRemainingEditable(String(remaining || ''));
@@ -156,6 +159,7 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
 
     const borrowerName = formData.borrowerName.trim();
     const phone = formData.phone.trim();
+    const note = formData.note.trim();
     const amountNum = parseFloat(formData.amount);
 
     if (!borrowerName || !formData.takenAt || !formData.dueDate) {
@@ -198,6 +202,8 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
         currency: formData.currency,
         takenAt: formData.takenAt,
         dueDate: formData.dueDate,
+        note: note || null,
+        description: deleteField(),
       };
 
       const existing = Array.isArray(loan.paymentHistory) ? loan.paymentHistory : [];
@@ -395,6 +401,7 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
   const originalAmountLabel = formatCurrency(loan.amount, loan.currency);
   const paidLabel = formatCurrency(totalPaid, loan.currency);
   const remainingLabel = formatCurrency(remaining, loan.currency);
+  const loanNote = String(loan.note || loan.description || '').trim();
 
   const renderDetails = () => (
     <div className="loan-details">
@@ -470,6 +477,15 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
             <div>
               <span>Phone</span>
               <strong>{loan.phone}</strong>
+            </div>
+          </div>
+        )}
+        {loanNote && (
+          <div className="loan-details__info-row loan-details__info-row--note">
+            <span className="loan-details__info-icon"><FaAlignLeft aria-hidden /></span>
+            <div>
+              <span>Note</span>
+              <p className="loan-details__note">{loanNote}</p>
             </div>
           </div>
         )}
@@ -574,6 +590,19 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
           />
         </div>
       </div>
+
+      <label className="flex flex-col gap-2 text-sm">
+        <span className="font-medium text-[var(--color-heading)]">Note <span className="font-normal text-[var(--color-muted)]">(optional)</span></span>
+        <textarea
+          name="note"
+          value={formData.note}
+          onChange={handleInputChange}
+          className="input loan-modal__textarea"
+          rows={4}
+          maxLength={500}
+          placeholder="Add a note about purpose, guarantee details, or repayment terms"
+        />
+      </label>
 
       <div className="grid gap-5 sm:grid-cols-2">
         <label className="flex flex-col gap-2 text-sm">

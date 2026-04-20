@@ -48,7 +48,8 @@ export default function LoanList({
         const query = searchTerm.toLowerCase();
         const nameMatch = (loan.borrowerName || '').toLowerCase().includes(query);
         const phoneMatch = loan.phone?.toLowerCase().includes(query);
-        return nameMatch || phoneMatch;
+        const noteMatch = (loan.note || loan.description || '').toLowerCase().includes(query);
+        return nameMatch || phoneMatch || noteMatch;
       });
   }, [enhancedLoans, activeFilter, searchTerm]);
 

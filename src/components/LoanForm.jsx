@@ -21,6 +21,7 @@ export default function LoanForm({ onClose }) {
   const [amount, setAmount] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [takenDate, setTakenDate] = useState(formatDateInputValue(new Date()));
+  const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { currencies: allCurrencies } = useCurrencies();
   const [currency, setCurrency] = useState(localStorage.getItem('preferredCurrency') || 'PKR');
@@ -90,6 +91,7 @@ export default function LoanForm({ onClose }) {
         currency,
         takenAt: takenDate,
         dueDate,
+        note: note.trim() || null,
         status: 'pending',
         repaidAt: null,
         deletedAt: null,
@@ -101,6 +103,7 @@ export default function LoanForm({ onClose }) {
       setPhone('');
       setAmount('');
       setDueDate('');
+      setNote('');
       setPhoneError('');
       setTakenDate(formatDateInputValue(new Date()));
       if (typeof onClose === 'function') {
@@ -244,6 +247,20 @@ export default function LoanForm({ onClose }) {
               onChange={(event) => setDueDate(event.target.value)}
               className="input"
               required
+              style={{ fontSize: '16px' }}
+            />
+          </label>
+
+          <label className="form-field loan-form__note-field">
+            <span>Note <span className="form-field__hint">(optional)</span></span>
+            <textarea
+              id="note"
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              placeholder="Add a note about purpose, guarantee details, or repayment terms"
+              className="input loan-form__textarea"
+              rows={4}
+              maxLength={500}
               style={{ fontSize: '16px' }}
             />
           </label>
