@@ -1285,6 +1285,12 @@
   gap: 0.6rem;
 }
 
+.loan-card--compact .loan-card__footer {
+  padding: 0 1.05rem 0.95rem;
+  margin-top: -0.25rem;
+  justify-content: flex-end;
+}
+
 .loan-modal__quick-actions {
   display: grid;
   gap: 0.85rem;
