@@ -14,7 +14,7 @@ import { usePhoneCountries } from '../utils/usePhoneCountries';
 import CountrySelect from './CountrySelect.jsx';
 import CurrencySelect from './CurrencySelect.jsx';
 import { formatDateInputValue } from '../utils/helpers';
-import PhoneContactSheet from './PhoneContactSheet.jsx';
+import { pickPhoneContact } from '../utils/contactPicker';
 import { FaAddressBook } from 'react-icons/fa';
 
 export default function LoanForm({ onClose }) {
@@ -33,7 +33,6 @@ export default function LoanForm({ onClose }) {
     seedCountries.find((country) => country.code === (localStorage.getItem('defaultPhoneCountry') || 'PK'))
   );
   const [phoneError, setPhoneError] = useState('');
-  const [isPhoneSheetOpen, setIsPhoneSheetOpen] = useState(false);
   const [countryFilter, setCountryFilter] = useState('');
   const [currencyFilter, setCurrencyFilter] = useState('');
 
@@ -75,12 +74,26 @@ export default function LoanForm({ onClose }) {
     setPhoneError(result.ok ? '' : result.reason || 'Invalid phone number');
   };
 
-  const handlePhoneContactSelect = (contact) => {
-    if (contact.phone) {
+  const handlePickPhoneContact = async () => {
+    try {
+      const contact = await pickPhoneContact();
+      if (contact.status === 'unsupported') {
+        toast.error('Phone book is available on supported mobile browsers.');
+        return;
+      }
+      if (contact.status === 'cancelled') return;
+      if (contact.status === 'no-phone') {
+        toast.error('Selected contact has no phone number.');
+        return;
+      }
+
       applyPhoneValue(contact.phone);
-    }
-    if (contact.name) {
-      setBorrowerName(contact.name);
+      if (!borrowerName.trim() && contact.name) {
+        setBorrowerName(contact.name);
+      }
+      toast.success('Phone number added from phone book.');
+    } catch (_) {
+      toast.error('Could not open phone book.');
     }
   };
 
@@ -198,7 +211,7 @@ export default function LoanForm({ onClose }) {
                 <button
                   type="button"
                   className="phone-book-button"
-                  onClick={() => setIsPhoneSheetOpen(true)}
+                  onClick={handlePickPhoneContact}
                   aria-label="Pick number from phone book"
                   title="Phone book"
                 >
@@ -316,13 +329,6 @@ export default function LoanForm({ onClose }) {
           </button>
         </div>
       </form>
-      <PhoneContactSheet
-        open={isPhoneSheetOpen}
-        initialName={borrowerName}
-        initialPhone={phone}
-        onSelect={handlePhoneContactSelect}
-        onClose={() => setIsPhoneSheetOpen(false)}
-      />
     </div>
   );
 }

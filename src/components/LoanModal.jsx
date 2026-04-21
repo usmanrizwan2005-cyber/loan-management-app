@@ -22,7 +22,7 @@ import { usePhoneCountries } from '../utils/usePhoneCountries';
 import CountrySelect from './CountrySelect.jsx';
 import CurrencySelect from './CurrencySelect.jsx';
 import { auth } from '../firebase';
-import PhoneContactSheet from './PhoneContactSheet.jsx';
+import { pickPhoneContact } from '../utils/contactPicker';
 import {
   FaArrowRight,
   FaAddressBook,
@@ -98,7 +98,6 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
   const [editPhoneCountry, setEditPhoneCountry] = useState(null);
   const [editCountryFilter, setEditCountryFilter] = useState('');
   const [editHasNoDueDate, setEditHasNoDueDate] = useState(false);
-  const [isPhoneSheetOpen, setIsPhoneSheetOpen] = useState(false);
 
   const { totalPaid, remaining, isEffectivelyPaid } = getLoanComputedState(loan || {});
 
@@ -183,12 +182,26 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
     setPhoneError(result.ok ? '' : result.reason || 'Invalid phone number');
   };
 
-  const handlePhoneContactSelect = (contact) => {
-    if (contact.phone) {
+  const handlePickPhoneContact = async () => {
+    try {
+      const contact = await pickPhoneContact();
+      if (contact.status === 'unsupported') {
+        toast.error('Phone book is available on supported mobile browsers.');
+        return;
+      }
+      if (contact.status === 'cancelled') return;
+      if (contact.status === 'no-phone') {
+        toast.error('Selected contact has no phone number.');
+        return;
+      }
+
       applyEditPhoneValue(contact.phone);
-    }
-    if (contact.name) {
-      setFormData((current) => ({ ...current, borrowerName: contact.name }));
+      if (!formData.borrowerName.trim() && contact.name) {
+        setFormData((current) => ({ ...current, borrowerName: contact.name }));
+      }
+      toast.success('Phone number added from phone book.');
+    } catch (_) {
+      toast.error('Could not open phone book.');
     }
   };
 
@@ -764,7 +777,7 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
             <button
               type="button"
               className="phone-book-button"
-              onClick={() => setIsPhoneSheetOpen(true)}
+              onClick={handlePickPhoneContact}
               aria-label="Pick number from phone book"
               title="Phone book"
             >
@@ -905,25 +918,16 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
   ) : null;
 
   return (
-    <>
-      <ModalChrome
-        title={title}
-        subtitle={subtitle}
-        badge={badge}
-        onClose={onClose}
-        onBack={activeView === 'details' ? undefined : () => setActiveView('details')}
-        showBack={activeView !== 'details'}
-        footer={footer}
-      >
-        {contentMap[activeView]}
-      </ModalChrome>
-      <PhoneContactSheet
-        open={isPhoneSheetOpen}
-        initialName={formData.borrowerName}
-        initialPhone={formData.phone}
-        onSelect={handlePhoneContactSelect}
-        onClose={() => setIsPhoneSheetOpen(false)}
-      />
-    </>
+    <ModalChrome
+      title={title}
+      subtitle={subtitle}
+      badge={badge}
+      onClose={onClose}
+      onBack={activeView === 'details' ? undefined : () => setActiveView('details')}
+      showBack={activeView !== 'details'}
+      footer={footer}
+    >
+      {contentMap[activeView]}
+    </ModalChrome>
   );
 }
