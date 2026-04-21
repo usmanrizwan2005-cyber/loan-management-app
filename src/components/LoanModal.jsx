@@ -95,20 +95,23 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
   const [phoneError, setPhoneError] = useState('');
   const [editPhoneCountry, setEditPhoneCountry] = useState(null);
   const [editCountryFilter, setEditCountryFilter] = useState('');
+  const [editHasNoDueDate, setEditHasNoDueDate] = useState(false);
 
   const { totalPaid, remaining, isEffectivelyPaid } = getLoanComputedState(loan || {});
 
   useEffect(() => {
     if (loan) {
+      const normalizedDueDate = formatDateInputValue(loan.dueDate);
       setFormData({
         borrowerName: loan.borrowerName || '',
         phone: loan.phone || '',
         amount: loan.amount || '',
         currency: loan.currency || 'PKR',
         takenAt: formatDateInputValue(loan.takenAt),
-        dueDate: formatDateInputValue(loan.dueDate),
+        dueDate: normalizedDueDate,
         note: loan.note || loan.description || '',
       });
+      setEditHasNoDueDate(!normalizedDueDate);
       setPaidEditable(String(totalPaid || ''));
       setRemainingEditable(String(remaining || ''));
       const sourceCountries = countries?.length ? countries : seedCountries;
@@ -162,8 +165,9 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
     const phone = formData.phone.trim();
     const note = formData.note.trim();
     const amountNum = parseFloat(formData.amount);
+    const resolvedDueDate = editHasNoDueDate ? '' : formData.dueDate;
 
-    if (!borrowerName || !formData.takenAt || !formData.dueDate) {
+    if (!borrowerName || !formData.takenAt || (!editHasNoDueDate && !formData.dueDate)) {
       toast.error('Please complete all required fields.');
       return;
     }
@@ -173,7 +177,7 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
       return;
     }
 
-    if (formData.dueDate < formData.takenAt) {
+    if (!editHasNoDueDate && formData.dueDate < formData.takenAt) {
       toast.error('Due date cannot be earlier than the taken date.');
       return;
     }
@@ -202,7 +206,7 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
         amount: amountNum,
         currency: formData.currency,
         takenAt: formData.takenAt,
-        dueDate: formData.dueDate,
+        dueDate: resolvedDueDate || null,
         note: note || null,
         description: deleteField(),
       };
@@ -233,7 +237,7 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
         const repaidDate = loan.repaidAt
           ? formatDateInputValue(loan.repaidAt) || getTodayDateValue()
           : getTodayDateValue();
-        const wasPaidOnTime = !formData.dueDate || repaidDate <= formData.dueDate;
+        const wasPaidOnTime = !resolvedDueDate || repaidDate <= resolvedDueDate;
         updateFields.status = wasPaidOnTime ? 'on-time' : 'late';
         updateFields.repaidAt = repaidDate;
       } else {
@@ -269,16 +273,19 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
     try {
       setIsSubmittingExtend(true);
       const extensionLog = {
-        extendedFrom: currentDueDate || loan.dueDate,
+        extendedFrom: currentDueDate || loan.dueDate || null,
         extendedTo: newDueDate,
         extendedAt: new Date().toISOString(),
       };
-      await updateDoc(loanRef, {
-        originalDueDate: loan.originalDueDate || currentDueDate || loan.dueDate,
+      const updateFields = {
         dueDate: newDueDate,
         status: 'pending',
         extensionHistory: arrayUnion(extensionLog),
-      });
+      };
+      if (loan.originalDueDate || currentDueDate) {
+        updateFields.originalDueDate = loan.originalDueDate || currentDueDate;
+      }
+      await updateDoc(loanRef, updateFields);
       toast.success('Due date extended.');
       onClose();
     } catch (error) {
@@ -420,6 +427,7 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
   const paidLabel = formatCurrency(totalPaid, loan.currency);
   const remainingLabel = formatCurrency(remaining, loan.currency);
   const loanNote = String(loan.note || loan.description || '').trim();
+  const formatDueDateLabel = (value) => (formatDateInputValue(value) ? formatDate(value) : 'No due date');
 
   const renderDetails = () => (
     <div className="loan-details">
@@ -468,7 +476,7 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
           <span className="loan-details__info-icon"><FaCalendarAlt aria-hidden /></span>
           <div>
             <span>Current due date</span>
-            <strong>{formatDate(loan.dueDate)}</strong>
+            <strong>{formatDueDateLabel(loan.dueDate)}</strong>
           </div>
         </div>
         {loan.originalDueDate && (
@@ -515,9 +523,9 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
           <ul>
             {loan.extensionHistory.map((extension, index) => (
               <li key={`${extension.extendedAt?.seconds || index}-${index}`}>
-                <span>{formatDate(extension.extendedFrom)}</span>
+                <span>{formatDueDateLabel(extension.extendedFrom)}</span>
                 <FaArrowRight aria-hidden />
-                <strong>{formatDate(extension.extendedTo)}</strong>
+                <strong>{formatDueDateLabel(extension.extendedTo)}</strong>
               </li>
             ))}
           </ul>
@@ -748,17 +756,33 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
             required
           />
         </label>
-        <label className="flex flex-col gap-2 text-sm">
-          <span className="font-medium text-[var(--color-heading)]">Due on</span>
+        <div className="flex flex-col gap-2 text-sm">
+          <span className="font-medium text-[var(--color-heading)]">Due on <span className="font-normal text-[var(--color-muted)]">(optional)</span></span>
           <input
             type="date"
             name="dueDate"
             value={formData.dueDate}
             onChange={handleInputChange}
             className="input"
-            required
+            disabled={editHasNoDueDate}
+            required={!editHasNoDueDate}
           />
-        </label>
+          <label className="form-field__check">
+            <input
+              type="checkbox"
+              checked={editHasNoDueDate}
+              onChange={(event) => {
+                const checked = event.target.checked;
+                setEditHasNoDueDate(checked);
+                if (checked) {
+                  setFormData((current) => ({ ...current, dueDate: '' }));
+                }
+              }}
+            />
+            <span className="form-field__toggle" aria-hidden="true" />
+            <span className="form-field__check-label">No due date</span>
+          </label>
+        </div>
       </div>
 
     </form>

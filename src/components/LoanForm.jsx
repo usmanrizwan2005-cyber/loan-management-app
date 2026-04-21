@@ -20,6 +20,7 @@ export default function LoanForm({ onClose }) {
   const [phone, setPhone] = useState('');
   const [amount, setAmount] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [hasNoDueDate, setHasNoDueDate] = useState(false);
   const [takenDate, setTakenDate] = useState(formatDateInputValue(new Date()));
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,7 +53,7 @@ export default function LoanForm({ onClose }) {
     event.preventDefault();
     if (isSubmitting) return;
 
-    if (!borrowerName || !amount || !dueDate || !takenDate) {
+    if (!borrowerName || !amount || !takenDate || (!hasNoDueDate && !dueDate)) {
       toast.error('Please fill out all required fields.');
       return;
     }
@@ -62,7 +63,7 @@ export default function LoanForm({ onClose }) {
       return;
     }
 
-    if (dueDate < takenDate) {
+    if (!hasNoDueDate && dueDate < takenDate) {
       toast.error('Due date cannot be earlier than the taken date.');
       return;
     }
@@ -90,7 +91,7 @@ export default function LoanForm({ onClose }) {
         amount: parseFloat(amount),
         currency,
         takenAt: takenDate,
-        dueDate,
+        dueDate: hasNoDueDate ? null : dueDate,
         note: note.trim() || null,
         status: 'pending',
         repaidAt: null,
@@ -103,6 +104,7 @@ export default function LoanForm({ onClose }) {
       setPhone('');
       setAmount('');
       setDueDate('');
+      setHasNoDueDate(false);
       setNote('');
       setPhoneError('');
       setTakenDate(formatDateInputValue(new Date()));
@@ -127,7 +129,7 @@ export default function LoanForm({ onClose }) {
               id="borrowerName"
               value={borrowerName}
               onChange={(event) => setBorrowerName(event.target.value)}
-              placeholder="e.g. Sara Ahmed"
+              placeholder="e.g. Saad Ahmed"
               className="input"
               required
               style={{ fontSize: '16px' }}
@@ -238,18 +240,32 @@ export default function LoanForm({ onClose }) {
             />
           </label>
 
-          <label className="form-field">
-            <span>Due on</span>
+          <div className="form-field">
+            <span>Due on <span className="form-field__hint">(optional)</span></span>
             <input
               type="date"
               id="dueDate"
               value={dueDate}
               onChange={(event) => setDueDate(event.target.value)}
               className="input"
-              required
+              disabled={hasNoDueDate}
+              required={!hasNoDueDate}
               style={{ fontSize: '16px' }}
             />
-          </label>
+            <label className="form-field__check">
+              <input
+                type="checkbox"
+                checked={hasNoDueDate}
+                onChange={(event) => {
+                  const checked = event.target.checked;
+                  setHasNoDueDate(checked);
+                  if (checked) setDueDate('');
+                }}
+              />
+              <span className="form-field__toggle" aria-hidden="true" />
+              <span className="form-field__check-label">No due date</span>
+            </label>
+          </div>
 
           <label className="form-field loan-form__note-field">
             <span>Note <span className="form-field__hint">(optional)</span></span>
