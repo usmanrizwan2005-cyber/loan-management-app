@@ -24,15 +24,15 @@ export default function LoanItem({
             <h3 className="loan-card__name">{borrowerName}</h3>
           </div>
         </div>
-        <div className="loan-card__summary-grid">
-          <span className="loan-card__summary-item">
+        <div className="loan-card__summary-meta">
+          <div className="loan-card__amount-feature">
             <span>Amount</span>
             <strong>{amountLabel}</strong>
-          </span>
-          <span className="loan-card__summary-item">
+          </div>
+          <div className="loan-card__taken-detail">
             <span>Taken</span>
             <strong>{takenDateLabel}</strong>
-          </span>
+          </div>
         </div>
       </button>
     </li>
