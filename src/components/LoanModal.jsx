@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { doc, updateDoc, arrayUnion, deleteField } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, deleteField, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import toast from 'react-hot-toast';
 import {
@@ -86,6 +86,7 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
   const [isSubmittingExtend, setIsSubmittingExtend] = useState(false);
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
   const [isSubmittingPaid, setIsSubmittingPaid] = useState(false);
+  const [isSubmittingArchive, setIsSubmittingArchive] = useState(false);
   const [paidAt, setPaidAt] = useState(getTodayDateValue());
   const [paymentType, setPaymentType] = useState(initialPaymentType || 'full');
   const [partialAmount, setPartialAmount] = useState('');
@@ -363,6 +364,23 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
     }
   };
 
+  const handleArchiveLoan = async () => {
+    if (isSubmittingArchive) return;
+    if (!window.confirm('Move this loan to the archive?')) return;
+
+    const loanRef = doc(db, 'loans', loan.id);
+    try {
+      setIsSubmittingArchive(true);
+      await updateDoc(loanRef, { deletedAt: serverTimestamp() });
+      toast.success('Loan moved to archive.');
+      onClose();
+    } catch (error) {
+      toast.error('Failed to archive loan.');
+    } finally {
+      setIsSubmittingArchive(false);
+    }
+  };
+
   const paymentHistory = Array.isArray(loan.paymentHistory)
     ? [...loan.paymentHistory]
         .filter((entry) => entry && ['partial', 'full', 'adjustment'].includes(entry.type))
@@ -529,18 +547,29 @@ export default function LoanModal({ loan, viewType, onClose, initialPaymentType 
         </section>
       )}
 
-      {!isEffectivelyPaid && (
-        <div className="loan-modal__quick-actions loan-modal__quick-actions--premium">
-          {remaining > 0 && (
-            <button type="button" className="button button--success button--stretch" onClick={() => setActiveView('markPaid')}>
-              Record payment
-            </button>
-          )}
+      <div className="loan-modal__quick-actions loan-modal__quick-actions--premium">
+        {!isEffectivelyPaid && remaining > 0 && (
+          <button type="button" className="button button--success button--stretch" onClick={() => setActiveView('markPaid')}>
+            Record payment
+          </button>
+        )}
+        {!isEffectivelyPaid && (
           <button type="button" className="button button--surface button--stretch" onClick={() => setActiveView('extend')}>
             Extend due date
           </button>
-        </div>
-      )}
+        )}
+        <button type="button" className="button button--surface button--stretch" onClick={() => setActiveView('edit')}>
+          Edit loan
+        </button>
+        <button
+          type="button"
+          className="button button--danger button--stretch"
+          onClick={handleArchiveLoan}
+          disabled={isSubmittingArchive}
+        >
+          {isSubmittingArchive ? 'Archiving...' : 'Move to archive'}
+        </button>
+      </div>
     </div>
   );
 
