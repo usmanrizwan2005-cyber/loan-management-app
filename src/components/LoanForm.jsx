@@ -14,6 +14,8 @@ import { usePhoneCountries } from '../utils/usePhoneCountries';
 import CountrySelect from './CountrySelect.jsx';
 import CurrencySelect from './CurrencySelect.jsx';
 import { formatDateInputValue } from '../utils/helpers';
+import { pickPhoneContact } from '../utils/contactPicker';
+import { FaAddressBook } from 'react-icons/fa';
 
 export default function LoanForm({ onClose }) {
   const [borrowerName, setBorrowerName] = useState('');
@@ -48,6 +50,52 @@ export default function LoanForm({ onClose }) {
   useEffect(() => {
     localStorage.setItem('preferredCurrency', currency);
   }, [currency]);
+
+  const saveDefaultPhoneCountry = (country) => {
+    const uid = auth.currentUser?.uid;
+    if (uid) {
+      localStorage.setItem(`defaultPhoneCountry:${uid}`, country.code);
+    } else {
+      localStorage.setItem('defaultPhoneCountry', country.code);
+    }
+  };
+
+  const applyPhoneValue = (value) => {
+    const detected = findCountryByDialPrefix(value);
+    const selectedCountry = detected || phoneCountry;
+    if (detected && detected.code !== (phoneCountry?.code || '')) {
+      setPhoneCountry(detected);
+      saveDefaultPhoneCountry(detected);
+    }
+
+    const formatted = formatWithDialCode(selectedCountry, value);
+    setPhone(formatted);
+    const result = validateInternationalPhone(selectedCountry, formatted);
+    setPhoneError(result.ok ? '' : result.reason || 'Invalid phone number');
+  };
+
+  const handlePickPhoneContact = async () => {
+    try {
+      const contact = await pickPhoneContact();
+      if (contact.status === 'unsupported') {
+        toast.error('Phone book is available on supported mobile browsers.');
+        return;
+      }
+      if (contact.status === 'cancelled') return;
+      if (contact.status === 'no-phone') {
+        toast.error('Selected contact has no phone number.');
+        return;
+      }
+
+      applyPhoneValue(contact.phone);
+      if (!borrowerName.trim() && contact.name) {
+        setBorrowerName(contact.name);
+      }
+      toast.success('Phone number added from phone book.');
+    } catch (_) {
+      toast.error('Could not open phone book.');
+    }
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -144,42 +192,32 @@ export default function LoanForm({ onClose }) {
                 value={phoneCountry}
                 onChange={(country) => {
                   setPhoneCountry(country);
-                  const uid = auth.currentUser?.uid;
-                  if (uid) {
-                    localStorage.setItem(`defaultPhoneCountry:${uid}`, country.code);
-                  } else {
-                    localStorage.setItem('defaultPhoneCountry', country.code);
-                  }
+                  saveDefaultPhoneCountry(country);
                 }}
                 filter={countryFilter}
                 onFilterChange={setCountryFilter}
               />
-              <input
-                type="tel"
-                id="phone"
-                value={phone}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  const detected = findCountryByDialPrefix(value);
-                  if (detected && detected.code !== (phoneCountry?.code || '')) {
-                    setPhoneCountry(detected);
-                    const uid = auth.currentUser?.uid;
-                    if (uid) {
-                      localStorage.setItem(`defaultPhoneCountry:${uid}`, detected.code);
-                    } else {
-                      localStorage.setItem('defaultPhoneCountry', detected.code);
-                    }
-                  }
-                  const formatted = formatWithDialCode(detected || phoneCountry, value);
-                  setPhone(formatted);
-                  const result = validateInternationalPhone(detected || phoneCountry, formatted);
-                  setPhoneError(result.ok ? '' : result.reason || 'Invalid phone number');
-                }}
-                placeholder={`+${phoneCountry?.dialCode || ''} 3xxxxxxxxx`}
-                className={`input${phoneError ? ' input--error' : ''}`}
-                aria-invalid={Boolean(phoneError)}
-                style={{ fontSize: '16px' }}
-              />
+              <div className="phone-input-row">
+                <input
+                  type="tel"
+                  id="phone"
+                  value={phone}
+                  onChange={(event) => applyPhoneValue(event.target.value)}
+                  placeholder={`+${phoneCountry?.dialCode || ''} 3xxxxxxxxx`}
+                  className={`input${phoneError ? ' input--error' : ''}`}
+                  aria-invalid={Boolean(phoneError)}
+                  style={{ fontSize: '16px' }}
+                />
+                <button
+                  type="button"
+                  className="phone-book-button"
+                  onClick={handlePickPhoneContact}
+                  aria-label="Pick number from phone book"
+                  title="Phone book"
+                >
+                  <FaAddressBook aria-hidden />
+                </button>
+              </div>
             </div>
             {phoneError && <p className="form-field__error">{phoneError}</p>}
           </div>
