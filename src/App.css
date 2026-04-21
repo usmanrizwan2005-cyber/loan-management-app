@@ -929,7 +929,6 @@
   align-items: center;
   gap: 0.85rem;
   min-width: 0;
-  padding-right: 4rem;
 }
 
 .loan-card__summary-meta {
@@ -1294,48 +1293,6 @@
   display: flex;
   justify-content: flex-end;
   gap: 0.6rem;
-}
-
-.loan-card--compact .loan-card__footer {
-  position: absolute;
-  top: 0.95rem;
-  right: 1rem;
-  z-index: 3;
-  padding: 0;
-  margin: 0;
-  justify-content: flex-end;
-  gap: 0.42rem;
-}
-
-.loan-card--compact .icon-button {
-  width: 2.2rem;
-  height: 2.2rem;
-  border-radius: 14px;
-  border-color: rgba(17, 85, 255, 0.12);
-  background: rgba(255, 255, 255, 0.86);
-  color: var(--color-primary);
-  box-shadow:
-    0 10px 20px rgba(8, 25, 56, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(10px);
-}
-
-.loan-card--compact .icon-button:hover {
-  border-color: rgba(17, 85, 255, 0.24);
-  background: #ffffff;
-  color: var(--color-primary-hover);
-  transform: translateY(-1px);
-}
-
-.loan-card--compact .icon-button--danger {
-  border-color: rgba(220, 76, 76, 0.16);
-  color: rgba(220, 76, 76, 0.9);
-}
-
-.loan-card--compact .icon-button--danger:hover {
-  border-color: rgba(220, 76, 76, 0.28);
-  background: rgba(255, 245, 245, 0.96);
-  color: #c53030;
 }
 
 .loan-modal__quick-actions {

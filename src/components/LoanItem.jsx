@@ -1,17 +1,9 @@
-import { useState } from 'react';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { FaEdit, FaTrashAlt } from 'react-icons/fa';
-import toast from 'react-hot-toast';
-import { db } from '../firebase';
 import { formatDate, formatCurrency, getLoanComputedState } from '../utils/helpers';
 
 export default function LoanItem({
   loan,
   onDetailsClick,
-  onEditClick,
 }) {
-  const [isProcessingArchive, setIsProcessingArchive] = useState(false);
-
   if (!loan) return null;
 
   const amountLabel = formatCurrency(loan.amount, loan.currency);
@@ -33,22 +25,6 @@ export default function LoanItem({
     : isEffectivelyPaid
     ? 'loan-card__badge--paid'
     : 'loan-card__badge--pending';
-
-  const moveToArchive = async () => {
-    if (isProcessingArchive) return;
-    if (!window.confirm('Move this loan to the archive?')) return;
-
-    const loanRef = doc(db, 'loans', loan.id);
-    try {
-      setIsProcessingArchive(true);
-      await updateDoc(loanRef, { deletedAt: serverTimestamp() });
-      toast.success('Loan moved to archive.');
-    } catch (error) {
-      toast.error('Failed to move loan to archive.');
-    } finally {
-      setIsProcessingArchive(false);
-    }
-  };
 
   return (
     <li className={`loan-card loan-card--compact loan-card--${isLate ? 'late' : isEffectivelyPaid ? 'paid' : 'pending'}`}>
@@ -78,28 +54,6 @@ export default function LoanItem({
           </div>
         </div>
       </button>
-
-      <footer className="loan-card__footer loan-card__footer--floating">
-        <button
-          type="button"
-          onClick={() => onEditClick?.(loan)}
-          className="icon-button"
-          title="Edit loan"
-        >
-          <FaEdit aria-hidden />
-          <span className="sr-only">Edit loan</span>
-        </button>
-        <button
-          type="button"
-          onClick={moveToArchive}
-          disabled={isProcessingArchive}
-          className="icon-button icon-button--danger"
-          title="Move to archive"
-        >
-          <FaTrashAlt aria-hidden />
-          <span className="sr-only">Move to archive</span>
-        </button>
-      </footer>
     </li>
   );
 }
