@@ -81,7 +81,6 @@ export default function LoanList({
         <div className="data-panel__titles">
           <span className="data-panel__eyebrow">Portfolio</span>
           <h2>Your loans</h2>
-          <p>Search borrowers, check balances, and record repayments quickly.</p>
         </div>
         <div className="data-panel__controls">
           <div className="data-panel__search">
