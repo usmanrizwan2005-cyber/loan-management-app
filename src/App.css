@@ -2721,12 +2721,13 @@
 .settings-section {
   display: grid;
   gap: 1.5rem;
+  width: min(100%, 760px);
 }
 
 @media (min-width: 1080px) {
   .settings-section {
-    grid-template-columns: minmax(340px, 420px) minmax(720px, 1fr);
     align-items: start;
+    justify-self: center;
   }
 }
 
@@ -2745,10 +2746,6 @@
   .settings-card--appearance {
     position: sticky;
     top: 1rem;
-  }
-
-  .settings-card--defaults {
-    min-height: 100%;
   }
 }
 
@@ -2775,29 +2772,6 @@
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-}
-
-.settings-card__grid {
-  display: grid;
-  gap: 1.25rem 1.5rem;
-}
-
-@media (min-width: 680px) {
-  .settings-card__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.settings-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  font-weight: 600;
-  color: var(--color-heading);
-}
-
-.settings-field span {
-  font-size: 0.95rem;
 }
 
 .settings-switch {
@@ -2921,10 +2895,6 @@
   color: var(--color-muted);
   font-size: 0.82rem;
   line-height: 1.45;
-}
-
-.settings-switch--summary {
-  grid-column: 1 / -1;
 }
 
 .settings-switch strong {
@@ -3516,8 +3486,7 @@
 :root.dark .auth-card__header h2,
 :root.dark .welcome-card h2,
 :root.dark .loan-card__name,
-:root.dark .settings-switch__copy span,
-:root.dark .settings-field span {
+:root.dark .settings-switch__copy span {
   color: var(--color-heading);
 }
 

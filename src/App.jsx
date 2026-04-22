@@ -35,12 +35,6 @@ const VIEW_MODES = [
   { key: 'trash', label: 'Archive' },
 ];
 
-const LOCALE_OPTIONS = [
-  { value: 'en-US', label: 'English (United States)' },
-  { value: 'en-GB', label: 'English (United Kingdom)' },
-  { value: 'ur-PK', label: 'Urdu (Pakistan)' },
-];
-
 const ITEMS_PER_PAGE_OPTIONS = [6, 9, 12, 18, 24];
 
 const LIGHT_THEME = {
@@ -143,19 +137,7 @@ function SettingsScreen({
   onBack,
   dark,
   onToggleDark,
-  itemsPerPage,
-  onItemsPerPageChange,
-  defaultCurrency,
-  onCurrencyChange,
-  currencyLocale,
-  onLocaleChange,
 }) {
-  const popularCodes = ['PKR', 'USD', 'EUR', 'GBP', 'AED', 'SAR'];
-  const currencyOptions = popularCodes.includes(defaultCurrency)
-    ? popularCodes
-    : [defaultCurrency, ...popularCodes];
-  const currentLocale = LOCALE_OPTIONS.find((option) => option.value === currencyLocale);
-
   return (
     <div className="screen settings-screen">
       <header className="settings-header">
@@ -166,14 +148,14 @@ function SettingsScreen({
           <div className="settings-header__copy">
             <span className="settings-card__eyebrow">Workspace preferences</span>
             <h1 className="settings-title">Preferences</h1>
-            <p>Adjust the visual style and default loan behavior without affecting your saved records.</p>
+            <p>Keep the workspace comfortable with a clean light or dark look.</p>
           </div>
         </div>
 
         <div className="settings-header__summary">
           <span className="settings-header__summary-label">Current workspace</span>
           <strong>{dark ? 'Dark' : 'Light'} mode</strong>
-          <span>{defaultCurrency} - {currentLocale?.label || currencyLocale}</span>
+          <span>Simple appearance controls</span>
         </div>
       </header>
 
@@ -209,69 +191,6 @@ function SettingsScreen({
               </button>
             </div>
 
-          </div>
-        </div>
-
-        <div className="settings-card settings-card--defaults">
-          <header className="settings-card__header">
-            <span className="settings-card__eyebrow">Defaults</span>
-            <h2>Portfolio preferences</h2>
-            <p>Control how the loan list is presented and which defaults new records should inherit.</p>
-          </header>
-
-          <div className="settings-card__content settings-card__grid">
-            <label className="settings-field">
-              <span>Loans per page</span>
-              <select
-                className="input"
-                value={itemsPerPage}
-                onChange={(event) => onItemsPerPageChange(Number(event.target.value))}
-              >
-                {ITEMS_PER_PAGE_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option} loans
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="settings-field">
-              <span>Preferred currency</span>
-              <select
-                className="input"
-                value={defaultCurrency}
-                onChange={(event) => onCurrencyChange(event.target.value)}
-              >
-                {currencyOptions.map((code) => (
-                  <option key={code} value={code}>
-                    {code}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="settings-field">
-              <span>Formatting locale</span>
-              <select
-                className="input"
-                value={currencyLocale}
-                onChange={(event) => onLocaleChange(event.target.value)}
-              >
-                {LOCALE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <div className="settings-switch settings-switch--summary">
-              <div className="settings-switch__copy">
-                <span>Current defaults</span>
-                <small>New loans will start with these display settings.</small>
-              </div>
-              <strong>{defaultCurrency} - {currencyLocale}</strong>
-            </div>
           </div>
         </div>
       </section>
@@ -789,12 +708,6 @@ function App() {
           onBack={goBack}
           dark={dark}
           onToggleDark={() => setDark((previous) => !previous)}
-          itemsPerPage={itemsPerPage}
-          onItemsPerPageChange={setItemsPerPage}
-          defaultCurrency={defaultCurrency}
-          onCurrencyChange={setDefaultCurrency}
-          currencyLocale={currencyLocale}
-          onLocaleChange={setCurrencyLocale}
         />
       </>
     );
