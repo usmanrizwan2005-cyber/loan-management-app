@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { Toaster } from 'react-hot-toast';
@@ -119,6 +119,24 @@ const buildHistoryState = (screenKey, viewModeValue = null, fallbackViewMode = '
     screen: screenKey,
     viewMode: fallbackViewMode ?? null,
   };
+};
+
+const buildLoanFormHistoryState = () => ({
+  ...buildHistoryState(SCREEN_DASHBOARD, 'loans', 'loans'),
+  loanForm: true,
+});
+
+const scrollPortfolioToTop = () => {
+  const scroll = () => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+  };
+
+  if (typeof window.requestAnimationFrame === 'function') {
+    window.requestAnimationFrame(scroll);
+    return;
+  }
+
+  scroll();
 };
 
 function SettingsScreen({
@@ -316,6 +334,7 @@ function App() {
   // Use refs to track current screen and viewMode for navigation
   const screenRef = useRef(screen);
   const viewModeRef = useRef(viewMode);
+  const showLoanFormRef = useRef(showLoanForm);
   
   // Update refs whenever state changes
   useEffect(() => {
@@ -325,6 +344,10 @@ function App() {
   useEffect(() => {
     viewModeRef.current = viewMode;
   }, [viewMode]);
+
+  useEffect(() => {
+    showLoanFormRef.current = showLoanForm;
+  }, [showLoanForm]);
 
   const navigate = (newScreen, newViewMode = null, shouldAddToHistory = true) => {
     const fallbackViewMode = viewModeRef.current || 'loans';
@@ -386,6 +409,16 @@ function App() {
     setModalLoanId(null);
   };
 
+  const closeLoanForm = useCallback(() => {
+    if (window.history.state?.loanForm) {
+      window.history.back();
+      return;
+    }
+
+    setShowLoanForm(false);
+    scrollPortfolioToTop();
+  }, []);
+
   // Initialize from URL hash on mount
   useEffect(() => {
     if (!user) return; // Don't initialize navigation before user is loaded
@@ -418,6 +451,15 @@ function App() {
     if (viewModeRef.current !== 'loans') {
       handleViewModeChange('loans');
     }
+
+    try {
+      if (!window.history.state?.loanForm) {
+        window.history.pushState(buildLoanFormHistoryState(), '', buildHistoryHash(SCREEN_DASHBOARD, 'loans'));
+      }
+    } catch (error) {
+      console.warn('Unable to push loan form history state.', error);
+    }
+
     setShowLoanForm(true);
   };
 
@@ -447,13 +489,20 @@ function App() {
       // Get the state from browser history
       const state = event.state;
       if (state && state.screen) {
+        const wasLoanFormOpen = showLoanFormRef.current;
+        const nextShowLoanForm =
+          state.screen === SCREEN_DASHBOARD && state.viewMode === 'loans' && state.loanForm === true;
+
         setScreen(state.screen);
         if (state.viewMode !== null && state.viewMode !== undefined) {
           setViewMode(state.viewMode);
         }
-        if (state.viewMode === 'trash') {
-          setShowLoanForm(false);
+        setShowLoanForm(nextShowLoanForm);
+
+        if (wasLoanFormOpen && !nextShowLoanForm && state.screen === SCREEN_DASHBOARD && state.viewMode === 'loans') {
+          scrollPortfolioToTop();
         }
+
         // Sync modal state from history
         if (state.modal && state.modal.loanId && state.screen === SCREEN_DASHBOARD) {
           setModalLoanId(state.modal.loanId);
@@ -470,6 +519,7 @@ function App() {
             const welcomeState = buildHistoryState(SCREEN_WELCOME, null, viewModeRef.current || 'loans');
             window.history.replaceState(welcomeState, '', buildHistoryHash(SCREEN_WELCOME));
             setScreen(SCREEN_WELCOME);
+            setShowLoanForm(false);
             setModalLoanId(null);
             return;
           }
@@ -477,6 +527,7 @@ function App() {
             const stateObj = buildHistoryState(SCREEN_SETTINGS, null, viewModeRef.current || 'loans');
             window.history.replaceState(stateObj, '', buildHistoryHash(SCREEN_SETTINGS));
             setScreen(SCREEN_SETTINGS);
+            setShowLoanForm(false);
             setModalLoanId(null);
             return;
           }
@@ -486,7 +537,7 @@ function App() {
             window.history.replaceState(stateObj, '', buildHistoryHash(SCREEN_DASHBOARD, view));
             setScreen(SCREEN_DASHBOARD);
             setViewMode(view);
-            if (view === 'trash') setShowLoanForm(false);
+            setShowLoanForm(false);
             setModalLoanId(null);
             return;
           }
@@ -552,7 +603,7 @@ function App() {
     const previousOverflow = document.body.style.overflow;
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
-        setShowLoanForm(false);
+        closeLoanForm();
       }
     };
 
@@ -563,7 +614,7 @@ function App() {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [showLoanForm]);
+  }, [closeLoanForm, showLoanForm]);
 
   useEffect(() => {
     if (!user) {
@@ -800,7 +851,7 @@ function App() {
               className="button button--surface dashboard-cta"
               onClick={() => {
                 if (showLoanForm) {
-                  setShowLoanForm(false);
+                  closeLoanForm();
                 } else {
                   openLoanForm();
                 }
@@ -931,8 +982,8 @@ function App() {
           )}
         </main>
 
-        <LoanFormDialog open={showLoanForm && viewMode === 'loans'} onClose={() => setShowLoanForm(false)}>
-          <LoanForm onClose={() => setShowLoanForm(false)} />
+        <LoanFormDialog open={showLoanForm && viewMode === 'loans'} onClose={closeLoanForm}>
+          <LoanForm onClose={closeLoanForm} />
         </LoanFormDialog>
 
         {modalLoanId && (
