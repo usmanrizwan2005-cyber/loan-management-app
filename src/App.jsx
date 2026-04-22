@@ -13,6 +13,8 @@ import {
   FaWallet,
   FaBalanceScale,
   FaTimes,
+  FaMoon,
+  FaSun,
 } from 'react-icons/fa';
 import { auth, db } from './firebase';
 import { toJSDate, formatCurrency, getLoanComputedState } from './utils/helpers';
@@ -176,6 +178,50 @@ const PALETTES = {
   },
 };
 
+const LIGHT_THEME = {
+  '--color-bg': '#eef5ff',
+  '--color-page-gradient': 'radial-gradient(circle at 10% 8%, rgba(17, 85, 255, 0.16), transparent 58%), radial-gradient(circle at 90% 8%, rgba(0, 166, 147, 0.15), transparent 55%), radial-gradient(circle at 20% 90%, rgba(242, 173, 61, 0.12), transparent 50%), linear-gradient(180deg, #f8fbff 0%, #eaf3ff 100%)',
+  '--color-surface': 'rgba(255, 255, 255, 0.98)',
+  '--color-surface-alt': 'rgba(244, 246, 252, 0.88)',
+  '--color-border': 'rgba(15, 23, 42, 0.08)',
+  '--color-border-strong': 'rgba(15, 23, 42, 0.14)',
+  '--color-muted': '#667085',
+  '--color-muted-strong': '#4a5568',
+  '--color-text': '#1d2433',
+  '--color-heading': '#111827',
+  '--shadow-soft': '0 28px 65px rgba(17, 24, 39, 0.08)',
+  '--shadow-card': '0 18px 48px rgba(17, 24, 39, 0.06)',
+  '--shadow-hover': '0 32px 70px rgba(17, 85, 255, 0.22)',
+  '--shadow-elevated': '0 42px 90px rgba(15, 23, 42, 0.12)',
+  '--shadow-focus': '0 0 0 4px rgba(17, 85, 255, 0.24)',
+  '--gradient-primary': 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-info) 62%, var(--color-accent) 100%)',
+  '--gradient-primary-soft': 'linear-gradient(150deg, rgba(17, 85, 255, 0.18) 0%, rgba(6, 182, 212, 0.1) 100%)',
+  '--gradient-surface': 'linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(252, 253, 255, 0.82) 100%)',
+  '--gradient-muted': 'linear-gradient(135deg, rgba(102, 112, 133, 0.12) 0%, rgba(102, 112, 133, 0.04) 100%)',
+};
+
+const DARK_THEME = {
+  '--color-bg': '#070b14',
+  '--color-page-gradient': 'radial-gradient(circle at 12% 10%, rgba(17, 85, 255, 0.28), transparent 42%), radial-gradient(circle at 88% 6%, rgba(0, 166, 147, 0.24), transparent 40%), radial-gradient(circle at 18% 94%, rgba(242, 173, 61, 0.1), transparent 46%), linear-gradient(180deg, #050814 0%, #0b1220 48%, #101827 100%)',
+  '--color-surface': 'rgba(15, 23, 42, 0.94)',
+  '--color-surface-alt': 'rgba(21, 31, 50, 0.86)',
+  '--color-border': 'rgba(148, 163, 184, 0.18)',
+  '--color-border-strong': 'rgba(148, 163, 184, 0.3)',
+  '--color-muted': '#a5b4c8',
+  '--color-muted-strong': '#cbd5e1',
+  '--color-text': '#e5edf8',
+  '--color-heading': '#f8fafc',
+  '--shadow-soft': '0 28px 70px rgba(0, 0, 0, 0.42)',
+  '--shadow-card': '0 22px 58px rgba(0, 0, 0, 0.36)',
+  '--shadow-hover': '0 34px 76px rgba(17, 85, 255, 0.34)',
+  '--shadow-elevated': '0 42px 92px rgba(0, 0, 0, 0.46)',
+  '--shadow-focus': '0 0 0 4px rgba(96, 165, 250, 0.34)',
+  '--gradient-primary': 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-info) 58%, var(--color-accent) 100%)',
+  '--gradient-primary-soft': 'linear-gradient(150deg, rgba(96, 165, 250, 0.22) 0%, rgba(20, 184, 166, 0.13) 100%)',
+  '--gradient-surface': 'linear-gradient(180deg, rgba(30, 41, 59, 0.94) 0%, rgba(15, 23, 42, 0.88) 100%)',
+  '--gradient-muted': 'linear-gradient(135deg, rgba(148, 163, 184, 0.16) 0%, rgba(148, 163, 184, 0.06) 100%)',
+};
+
 const buildHistoryHash = (screenKey, viewModeValue = null) => {
   if (screenKey === SCREEN_DASHBOARD) {
     let suffix = '';
@@ -255,8 +301,21 @@ function SettingsScreen({
                 <span>Dark mode</span>
                 <small>Use a lower-glare layout for evening work and dim rooms.</small>
               </div>
-              <button type="button" className="button button--surface" onClick={onToggleDark}>
-                {dark ? 'Turn off' : 'Turn on'}
+              <button
+                type="button"
+                className={`theme-toggle${dark ? ' theme-toggle--active' : ''}`}
+                onClick={onToggleDark}
+                aria-pressed={dark}
+              >
+                <span className="theme-toggle__option theme-toggle__option--light">
+                  <FaSun aria-hidden />
+                  Light
+                </span>
+                <span className="theme-toggle__option theme-toggle__option--dark">
+                  <FaMoon aria-hidden />
+                  Dark
+                </span>
+                <span className="theme-toggle__thumb" aria-hidden />
               </button>
             </div>
 
@@ -376,6 +435,7 @@ function LoanFormDialog({ open, onClose, children }) {
           <button
             type="button"
             className="button button--ghost button--compact loan-form-dialog__close"
+            aria-label="Close add loan form"
             onClick={onClose}
           >
             <FaTimes aria-hidden />
@@ -608,23 +668,22 @@ function App() {
 
   useEffect(() => {
     const root = document.documentElement;
-    if (dark) {
-      root.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      root.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
+    root.classList.toggle('dark', dark);
+    root.style.colorScheme = dark ? 'dark' : 'light';
+    localStorage.setItem('theme', dark ? 'dark' : 'light');
   }, [dark]);
 
   useEffect(() => {
     const root = document.documentElement;
     const palette = PALETTES[themePalette] || PALETTES.custom;
-    Object.entries(palette).forEach(([variable, value]) => {
+    const modeTheme = dark ? { ...palette, ...DARK_THEME } : { ...LIGHT_THEME, ...palette };
+
+    Object.entries(modeTheme).forEach(([variable, value]) => {
       root.style.setProperty(variable, value);
     });
+
     localStorage.setItem('themePalette', themePalette);
-  }, [themePalette]);
+  }, [themePalette, dark]);
 
   useEffect(() => {
     localStorage.setItem('itemsPerPage', String(itemsPerPage));
@@ -778,7 +837,12 @@ function App() {
   }
 
   if (!user) {
-    return <Login />;
+    return (
+      <>
+        <Toaster position="top-center" />
+        <Login />
+      </>
+    );
   }
 
   if (screen === SCREEN_WELCOME) {

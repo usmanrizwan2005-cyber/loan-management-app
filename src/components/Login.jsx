@@ -1,6 +1,15 @@
-import { GoogleAuthProvider, signInWithPopup, signInWithRedirect } from 'firebase/auth';
+import { useEffect, useState } from 'react';
+import { GoogleAuthProvider, getRedirectResult, signInWithPopup, signInWithRedirect } from 'firebase/auth';
 import { auth } from '../firebase';
 import toast from 'react-hot-toast';
+
+const AUTO_SIGN_IN_PARAM = 'googleSignIn';
+
+const createGoogleProvider = () => {
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  return provider;
+};
 
 const getFriendlyAuthMessage = (error) => {
   switch (error?.code) {
@@ -20,11 +29,64 @@ const getFriendlyAuthMessage = (error) => {
 };
 
 export default function Login() {
+  const [isSigningIn, setIsSigningIn] = useState(false);
+
+  useEffect(() => {
+    let isActive = true;
+    const url = new URL(window.location.href);
+
+    if (window.location.hostname === 'localhost' && url.searchParams.get(AUTO_SIGN_IN_PARAM) === '1') {
+      url.searchParams.delete(AUTO_SIGN_IN_PARAM);
+      const cleanUrl = `${url.pathname}${url.search}${url.hash}`;
+      window.history.replaceState(window.history.state, '', cleanUrl || '/');
+
+      const provider = createGoogleProvider();
+      setIsSigningIn(true);
+      signInWithRedirect(auth, provider).catch((error) => {
+        if (!isActive) return;
+        setIsSigningIn(false);
+        toast.error(getFriendlyAuthMessage(error));
+      });
+
+      return () => {
+        isActive = false;
+      };
+    }
+
+    getRedirectResult(auth)
+      .then((result) => {
+        if (!isActive || !result) return;
+        toast.success('Signed in successfully!');
+      })
+      .catch((error) => {
+        if (!isActive) return;
+        toast.error(getFriendlyAuthMessage(error));
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
   const handleGoogleSignIn = async () => {
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
+    if (isSigningIn) return;
+
+    const provider = createGoogleProvider();
 
     try {
+      setIsSigningIn(true);
+
+      if (window.location.hostname === '127.0.0.1') {
+        const localhostUrl = new URL(window.location.href);
+        localhostUrl.hostname = 'localhost';
+        localhostUrl.searchParams.set(AUTO_SIGN_IN_PARAM, '1');
+        toast('Opening Google sign-in from localhost...', { duration: 2500 });
+        window.setTimeout(() => {
+          window.location.assign(localhostUrl.toString());
+        }, 500);
+        return;
+      }
+
       await signInWithPopup(auth, provider);
       toast.success('Signed in successfully!');
     } catch (error) {
@@ -39,6 +101,8 @@ export default function Login() {
       }
 
       toast.error(getFriendlyAuthMessage(error));
+    } finally {
+      setIsSigningIn(false);
     }
   };
 
@@ -63,7 +127,12 @@ export default function Login() {
             <h2>Sign in</h2>
             <p>Connect with Google to continue.</p>
           </header>
-          <button type="button" onClick={handleGoogleSignIn} className="button button--primary button--stretch">
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            className="button button--primary button--stretch"
+            disabled={isSigningIn}
+          >
             <span className="auth-card__google-icon" aria-hidden>
               <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" focusable="false">
                 <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.2l6.8-6.8C35.8 2.2 30.3 0 24 0 14.6 0 6.6 5.3 2.6 13l7.9 6.1C12.4 13 17.7 9.5 24 9.5z" />
@@ -73,7 +142,7 @@ export default function Login() {
                 <path fill="none" d="M0 0h48v48H0z" />
               </svg>
             </span>
-            <span>Sign in with Google</span>
+            <span>{isSigningIn ? 'Opening Google...' : 'Sign in with Google'}</span>
           </button>
           <p className="auth-card__note">
             By continuing you agree to our privacy policy and understand your loans sync securely to your Google account.
