@@ -43,142 +43,12 @@ const LOCALE_OPTIONS = [
 
 const ITEMS_PER_PAGE_OPTIONS = [6, 9, 12, 18, 24];
 
-const PALETTE_CHOICES = [
-  { key: 'custom', label: 'Aurora' },
-  { key: 'sky', label: 'Sky' },
-  { key: 'ocean', label: 'Ocean' },
-  { key: 'forest', label: 'Forest' },
-  { key: 'rose', label: 'Rose' },
-  { key: 'violet', label: 'Violet' },
-  { key: 'amber', label: 'Amber' },
-  { key: 'slate', label: 'Slate' },
-];
-
-const PALETTES = {
-  custom: {
-    '--color-primary': '#1155ff',
-    '--color-primary-hover': '#0d43cc',
-    '--color-primary-active': '#082f99',
-    '--color-accent': '#00a693',
-    '--color-info': '#0ea5e9',
-    '--color-surface': '#ffffff',
-    '--color-surface-alt': 'rgba(244, 246, 252, 0.9)',
-    '--color-border': 'rgba(15, 23, 42, 0.08)',
-    '--color-border-strong': 'rgba(15, 23, 42, 0.14)',
-    '--color-bg': '#eef5ff',
-    '--color-muted': '#667085',
-    '--color-text': '#1d2433',
-    '--color-heading': '#111827',
-    '--color-page-gradient': 'radial-gradient(circle at 10% 8%, rgba(17, 85, 255, 0.16), transparent 58%), radial-gradient(circle at 90% 8%, rgba(0, 166, 147, 0.15), transparent 55%), radial-gradient(circle at 20% 90%, rgba(242, 173, 61, 0.12), transparent 50%), linear-gradient(180deg, #f8fbff 0%, #eaf3ff 100%)',
-  },
-  sky: {
-    '--color-primary': '#0ea5e9',
-    '--color-primary-hover': '#0284c7',
-    '--color-primary-active': '#0369a1',
-    '--color-accent': '#38bdf8',
-    '--color-info': '#22d3ee',
-    '--color-surface': '#f8feff',
-    '--color-surface-alt': '#f0f9ff',
-    '--color-border': '#cae8ff',
-    '--color-border-strong': '#9ed8ff',
-    '--color-bg': '#eef9ff',
-    '--color-muted': '#0f172a',
-    '--color-text': '#082f49',
-    '--color-heading': '#0f172a',
-  },
-  ocean: {
-    '--color-primary': '#0284c7',
-    '--color-primary-hover': '#0369a1',
-    '--color-primary-active': '#075985',
-    '--color-accent': '#0ea5e9',
-    '--color-info': '#38bdf8',
-    '--color-surface': '#e0f2fe',
-    '--color-surface-alt': 'rgba(224, 242, 254, 0.85)',
-    '--color-border': '#9cd6f7',
-    '--color-border-strong': '#6ec0ea',
-    '--color-bg': '#d8efff',
-    '--color-muted': '#0f172a',
-    '--color-text': '#0b1220',
-    '--color-heading': '#082f49',
-  },
-  forest: {
-    '--color-primary': '#059669',
-    '--color-primary-hover': '#047857',
-    '--color-primary-active': '#065f46',
-    '--color-accent': '#34d399',
-    '--color-info': '#a7f3d0',
-    '--color-surface': '#ecfdf5',
-    '--color-surface-alt': 'rgba(236, 253, 245, 0.85)',
-    '--color-border': '#bbf7d0',
-    '--color-border-strong': '#86efac',
-    '--color-bg': '#dcfce7',
-    '--color-muted': '#064e3b',
-    '--color-text': '#022c22',
-    '--color-heading': '#022c22',
-  },
-  rose: {
-    '--color-primary': '#e11d48',
-    '--color-primary-hover': '#be123c',
-    '--color-primary-active': '#9f1239',
-    '--color-accent': '#fb7185',
-    '--color-info': '#fecdd3',
-    '--color-surface': '#fff1f2',
-    '--color-surface-alt': 'rgba(255, 241, 242, 0.85)',
-    '--color-border': '#fbcfe8',
-    '--color-border-strong': '#f472b6',
-    '--color-bg': '#ffe4e6',
-    '--color-muted': '#831843',
-    '--color-text': '#4a044e',
-    '--color-heading': '#4a044e',
-  },
-  violet: {
-    '--color-primary': '#7c3aed',
-    '--color-primary-hover': '#6d28d9',
-    '--color-primary-active': '#5b21b6',
-    '--color-accent': '#a855f7',
-    '--color-info': '#c4b5fd',
-    '--color-surface': '#f5f3ff',
-    '--color-surface-alt': 'rgba(245, 243, 255, 0.85)',
-    '--color-border': '#ddd6fe',
-    '--color-border-strong': '#c4b5fd',
-    '--color-bg': '#ede9fe',
-    '--color-muted': '#4338ca',
-    '--color-text': '#2e1065',
-    '--color-heading': '#1e1b4b',
-  },
-  amber: {
-    '--color-primary': '#d97706',
-    '--color-primary-hover': '#b45309',
-    '--color-primary-active': '#92400e',
-    '--color-accent': '#f59e0b',
-    '--color-info': '#fde68a',
-    '--color-surface': '#fffbeb',
-    '--color-surface-alt': 'rgba(255, 251, 235, 0.88)',
-    '--color-border': '#fcd34d',
-    '--color-border-strong': '#fbbf24',
-    '--color-bg': '#fef3c7',
-    '--color-muted': '#78350f',
-    '--color-text': '#422006',
-    '--color-heading': '#7c2d12',
-  },
-  slate: {
-    '--color-primary': '#334155',
-    '--color-primary-hover': '#1e293b',
-    '--color-primary-active': '#0f172a',
-    '--color-accent': '#64748b',
-    '--color-info': '#94a3b8',
-    '--color-surface': '#f1f5f9',
-    '--color-surface-alt': 'rgba(241, 245, 249, 0.85)',
-    '--color-border': '#cbd5f5',
-    '--color-border-strong': '#94a3b8',
-    '--color-bg': '#e2e8f0',
-    '--color-muted': '#475569',
-    '--color-text': '#0f172a',
-    '--color-heading': '#020617',
-  },
-};
-
 const LIGHT_THEME = {
+  '--color-primary': '#1155ff',
+  '--color-primary-hover': '#0d43cc',
+  '--color-primary-active': '#082f99',
+  '--color-accent': '#00a693',
+  '--color-info': '#0ea5e9',
   '--color-bg': '#eef5ff',
   '--color-page-gradient': 'radial-gradient(circle at 10% 8%, rgba(17, 85, 255, 0.16), transparent 58%), radial-gradient(circle at 90% 8%, rgba(0, 166, 147, 0.15), transparent 55%), radial-gradient(circle at 20% 90%, rgba(242, 173, 61, 0.12), transparent 50%), linear-gradient(180deg, #f8fbff 0%, #eaf3ff 100%)',
   '--color-surface': 'rgba(255, 255, 255, 0.98)',
@@ -201,6 +71,11 @@ const LIGHT_THEME = {
 };
 
 const DARK_THEME = {
+  '--color-primary': '#3b82f6',
+  '--color-primary-hover': '#60a5fa',
+  '--color-primary-active': '#2563eb',
+  '--color-accent': '#14b8a6',
+  '--color-info': '#38bdf8',
   '--color-bg': '#070b14',
   '--color-page-gradient': 'radial-gradient(circle at 12% 10%, rgba(17, 85, 255, 0.28), transparent 42%), radial-gradient(circle at 88% 6%, rgba(0, 166, 147, 0.24), transparent 40%), radial-gradient(circle at 18% 94%, rgba(242, 173, 61, 0.1), transparent 46%), linear-gradient(180deg, #050814 0%, #0b1220 48%, #101827 100%)',
   '--color-surface': 'rgba(15, 23, 42, 0.94)',
@@ -250,8 +125,6 @@ function SettingsScreen({
   onBack,
   dark,
   onToggleDark,
-  themePalette,
-  onSelectPalette,
   itemsPerPage,
   onItemsPerPageChange,
   defaultCurrency,
@@ -263,7 +136,6 @@ function SettingsScreen({
   const currencyOptions = popularCodes.includes(defaultCurrency)
     ? popularCodes
     : [defaultCurrency, ...popularCodes];
-  const currentPalette = PALETTE_CHOICES.find((option) => option.key === themePalette) || PALETTE_CHOICES[0];
   const currentLocale = LOCALE_OPTIONS.find((option) => option.value === currencyLocale);
 
   return (
@@ -282,7 +154,7 @@ function SettingsScreen({
 
         <div className="settings-header__summary">
           <span className="settings-header__summary-label">Current workspace</span>
-          <strong>{currentPalette.label} theme in {dark ? 'dark' : 'light'} mode</strong>
+          <strong>{dark ? 'Dark' : 'Light'} mode</strong>
           <span>{defaultCurrency} - {currentLocale?.label || currencyLocale}</span>
         </div>
       </header>
@@ -319,31 +191,6 @@ function SettingsScreen({
               </button>
             </div>
 
-            <div className="settings-palette">
-              <div className="settings-palette__header">
-                <span>Color palette</span>
-                <p>Choose the accent system used for buttons, cards, and key highlights.</p>
-              </div>
-              <div className="settings-palette__grid">
-                {PALETTE_CHOICES.map((option) => (
-                  <button
-                    key={option.key}
-                    type="button"
-                    onClick={() => onSelectPalette(option.key)}
-                    className={`settings-palette__option${themePalette === option.key ? ' settings-palette__option--active' : ''}`}
-                  >
-                    <span
-                      className="settings-palette__swatch"
-                      style={{
-                        '--swatch-primary': PALETTES[option.key]['--color-primary'],
-                        '--swatch-accent': PALETTES[option.key]['--color-accent'],
-                      }}
-                    />
-                    <span>{option.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
 
@@ -455,7 +302,6 @@ function App() {
   const [viewMode, setViewMode] = useState('loans');
   const [showLoanForm, setShowLoanForm] = useState(false);
   const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark');
-  const [themePalette, setThemePalette] = useState(() => localStorage.getItem('themePalette') || 'custom');
   const [itemsPerPage, setItemsPerPage] = useState(() => {
     const stored = Number(localStorage.getItem('itemsPerPage') || 12);
     return ITEMS_PER_PAGE_OPTIONS.includes(stored) ? stored : 12;
@@ -675,15 +521,14 @@ function App() {
 
   useEffect(() => {
     const root = document.documentElement;
-    const palette = PALETTES[themePalette] || PALETTES.custom;
-    const modeTheme = dark ? { ...palette, ...DARK_THEME } : { ...LIGHT_THEME, ...palette };
+    const modeTheme = dark ? DARK_THEME : LIGHT_THEME;
 
     Object.entries(modeTheme).forEach(([variable, value]) => {
       root.style.setProperty(variable, value);
     });
 
-    localStorage.setItem('themePalette', themePalette);
-  }, [themePalette, dark]);
+    localStorage.removeItem('themePalette');
+  }, [dark]);
 
   useEffect(() => {
     localStorage.setItem('itemsPerPage', String(itemsPerPage));
@@ -893,8 +738,6 @@ function App() {
           onBack={goBack}
           dark={dark}
           onToggleDark={() => setDark((previous) => !previous)}
-          themePalette={themePalette}
-          onSelectPalette={setThemePalette}
           itemsPerPage={itemsPerPage}
           onItemsPerPageChange={setItemsPerPage}
           defaultCurrency={defaultCurrency}
